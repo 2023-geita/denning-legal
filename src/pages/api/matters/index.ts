@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import connectToDatabase from '@/lib/mongodb';
+import clientPromise from '@/lib/mongodb';
 import { Collection, Document, WithId } from 'mongodb';
 import type { Matter } from '@/types/matter';
 
@@ -37,7 +37,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     console.log('Attempting database connection...');
-    const { db } = await connectToDatabase();
+    const client = await clientPromise;
+    const db = client.db(process.env.MONGODB_DB);
     console.log('Database connected successfully');
 
     const collection: Collection<MatterDocument> = db.collection('matters');
@@ -58,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       try {
         // Format and validate the data
-        const matterData: Omit<MatterDocument, '_id'> = {
+        const matterData = {
           client: String(req.body.client || ''),
           status: ['Open', 'Pending', 'Closed'].includes(req.body.status) ? req.body.status : 'Open',
           notes: String(req.body.notes || ''),
@@ -69,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           caseNumber: String(req.body.caseNumber || ''),
           createdAt: new Date(),
           updatedAt: new Date()
-        };
+        } as MatterDocument;
 
         console.log('Formatted matter data:', JSON.stringify(matterData, null, 2));
 
