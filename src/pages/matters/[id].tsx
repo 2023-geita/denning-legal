@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '@/components/layout/Layout';
 import { Card, Button, Input, Select } from '@/components/common';
@@ -16,17 +16,135 @@ export default function MatterDetails() {
   const router = useRouter();
   const { id } = router.query;
   const [activeSection, setActiveSection] = useState('details');
-  const [isEditing, setIsEditing] = useState(!id);
+  const [isEditing, setIsEditing] = useState(false);
   const [matterData, setMatterData] = useState<Partial<Matter>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (id && typeof id === 'string') {
+      const fetchMatterData = async () => {
+        try {
+          setIsLoading(true);
+          console.log('Fetching matter data for ID:', id);
+          const response = await fetch(`/api/matters/${id}`);
+          const data = await response.json();
+          console.log('Fetched matter data:', data);
+          
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to fetch matter data');
+          }
+          
+          setMatterData(data);
+        } catch (error) {
+          console.error('Error fetching matter:', error);
+          setError(error instanceof Error ? error.message : 'Failed to fetch matter');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchMatterData();
+    } else {
+      setIsLoading(false);
+    }
+  }, [id]);
 
   const handleSave = async () => {
-    // Save implementation
+    if (!id || typeof id !== 'string') {
+      setError('Invalid matter ID');
+      return;
+    }
+
+    try {
+      setError('');
+      setIsSaving(true);
+      console.log('Starting save operation...');
+      console.log('Matter ID:', id);
+      console.log('Matter data to save:', matterData);
+
+      const requestBody = {
+        client: matterData.client || '',
+        status: matterData.status || 'Open',
+        notes: matterData.notes || '',
+        originatingAttorney: matterData.originatingAttorney || '',
+        responsibleAttorney: matterData.responsibleAttorney || '',
+        courtLocation: matterData.courtLocation || '',
+        practiceArea: matterData.practiceArea || '',
+        caseNumber: matterData.caseNumber || '',
+      };
+
+      console.log('Request body:', requestBody);
+      console.log('Making PUT request to:', `/api/matters/${id}`);
+
+      const response = await fetch(`/api/matters/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log('Response status:', response.status);
+      const responseText = await response.text();
+      console.log('Raw response:', responseText);
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log('Parsed response data:', data);
+      } catch (e) {
+        console.error('Failed to parse response as JSON:', e);
+        throw new Error('Invalid response from server');
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || `Server error: ${response.status}`);
+      }
+
+      // Update local state with server response
+      console.log('Updating local state with:', data);
+      setMatterData(data);
+      setIsEditing(false);
+      alert('Matter updated successfully');
+
+      // Refresh the page data
+      console.log('Refreshing page data...');
+      router.replace(router.asPath);
+    } catch (error) {
+      console.error('Error in handleSave:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update matter');
+      alert('Failed to update matter: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="text-gray-400">Loading matter details...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="text-red-500">{error}</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
       <div className="min-h-screen">
-        {/* Filter Tabs */}
+        {/* Header with actions */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex space-x-2">
             <button className="filter-tab filter-tab-active">All</button>
@@ -34,15 +152,39 @@ export default function MatterDetails() {
             <button className="filter-tab filter-tab-inactive">Pending</button>
             <button className="filter-tab filter-tab-inactive">Closed</button>
           </div>
-          <button 
-            onClick={() => router.push('/matters/new')}
-            className="inline-flex items-center px-4 py-2 bg-[#1A1A1A] text-white rounded-lg hover:bg-[#2D2D2D] transition-colors"
-          >
-            <span className="text-[#FFD700] mr-2">⚡</span>
-            <span className="text-sm font-medium">New Matter</span>
-          </button>
+          <div className="flex space-x-4">
+            {isEditing ? (
+              <>
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="inline-flex items-center px-4 py-2 bg-[#1A4731] text-[#34D399] rounded-lg hover:bg-[#1A4731]/80 transition-colors disabled:opacity-50"
+                >
+                  <span className="text-sm font-medium">
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  disabled={isSaving}
+                  className="inline-flex items-center px-4 py-2 bg-[#4C0519] text-[#F87171] rounded-lg hover:bg-[#4C0519]/80 transition-colors disabled:opacity-50"
+                >
+                  <span className="text-sm font-medium">Cancel</span>
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="inline-flex items-center px-4 py-2 bg-[#1A1A1A] text-white rounded-lg hover:bg-[#2D2D2D] transition-colors"
+              >
+                <span className="text-[#FFD700] mr-2">✎</span>
+                <span className="text-sm font-medium">Edit Matter</span>
+              </button>
+            )}
+          </div>
         </div>
 
+        {/* Main content */}
         <div className="flex gap-6">
           {/* Left Sidebar */}
           <Card className="w-64 shrink-0 bg-[#1A1A1A]">
@@ -66,11 +208,6 @@ export default function MatterDetails() {
                   </button>
                 ))}
               </nav>
-            </div>
-
-            <div className="mt-8">
-              <h3 className="text-sm font-medium text-gray-400 uppercase mb-4">Recent Updates</h3>
-              {/* Recent updates would go here */}
             </div>
           </Card>
 
@@ -149,137 +286,6 @@ export default function MatterDetails() {
                   onChange={(e) => setMatterData({ ...matterData, caseNumber: e.target.value })}
                   disabled={!isEditing}
                 />
-              </div>
-            </Card>
-
-            {/* Deadlines Section */}
-            <Card className="bg-[#1A1A1A]">
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Matter opens"
-                    type="date"
-                    placeholder="Select date"
-                    disabled={!isEditing}
-                  />
-                  <Input
-                    label="Matter closes"
-                    type="date"
-                    placeholder="Select date"
-                    disabled={!isEditing}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Matter due"
-                    type="date"
-                    placeholder="Select date"
-                    disabled={!isEditing}
-                  />
-                  <Input
-                    label="Statute of limitations date"
-                    type="date"
-                    placeholder="Select date"
-                    disabled={!isEditing}
-                  />
-                </div>
-              </div>
-            </Card>
-
-            {/* Subscribed Attorneys Section */}
-            <Card className="bg-[#1A1A1A]">
-              <div className="space-y-4">
-                <Input
-                  label="Attorney Name"
-                  placeholder="Search attorney by name"
-                  disabled={!isEditing}
-                />
-                <div className="flex items-center space-x-2 bg-surface-dark rounded-lg px-3 py-2">
-                  <span className="text-primary">Kevin Dela</span>
-                  <button className="text-gray-400 hover:text-white">×</button>
-                </div>
-              </div>
-            </Card>
-
-            {/* Billing Details Section */}
-            <Card className="bg-[#1A1A1A]">
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Client"
-                    placeholder="Select client to bill"
-                    disabled={!isEditing}
-                  />
-                  <Input
-                    label="Total cost"
-                    type="number"
-                    placeholder="750,000"
-                    disabled={!isEditing}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Retainer fee"
-                    type="number"
-                    placeholder="150,000"
-                    disabled={!isEditing}
-                  />
-                  <Input
-                    label="Retainer due"
-                    type="date"
-                    placeholder="25/12/2024"
-                    disabled={!isEditing}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Unpaid Balance"
-                    type="number"
-                    placeholder="584,000"
-                    disabled
-                  />
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Payment History
-                    </label>
-                    <div className="bg-surface-dark rounded-lg p-3 space-y-1">
-                      <p className="text-sm text-gray-400">KSh. 100,000 on 28/11/2023</p>
-                      <p className="text-sm text-gray-400">KSh. 200,000 on 28/11/2023</p>
-                      <p className="text-sm text-gray-400">KSh. 300,000 on 28/11/2023</p>
-                      <p className="text-sm text-gray-400">KSh. 200,000 on 28/11/2023</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            {/* Documents Section */}
-            <Card className="bg-[#1A1A1A]">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-400 mb-1">Add doc from online source</p>
-                    <div className="flex space-x-2">
-                      <Input
-                        placeholder="Paste url"
-                        className="flex-1"
-                      />
-                      <Button variant="secondary">Import</Button>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2 ml-4">
-                    <span className="text-sm text-gray-400">or add from</span>
-                    <Button variant="secondary">Local files</Button>
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-2">
-                  <Button variant="danger">Empty</Button>
-                  <Button>Save</Button>
-                </div>
               </div>
             </Card>
           </div>

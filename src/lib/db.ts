@@ -1,13 +1,13 @@
 import { MongoClient, ObjectId } from 'mongodb';
-import clientPromise from './mongodb';
+import connectToDatabase from './mongodb';
 
 // Type for the error handler
 type DbError = Error & { code?: string };
 
 // Get database instance
 export async function getDb() {
-  const client = await clientPromise;
-  return client.db(process.env.MONGODB_DB);
+  const { db } = await connectToDatabase();
+  return db;
 }
 
 // Collection getters

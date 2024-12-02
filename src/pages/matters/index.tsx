@@ -1,44 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import Link from 'next/link';
 import { formatDate } from '@/utils/format';
-
-interface Matter {
-  id: string;
-  title: string;
-  client: string;
-  date: string;
-  status: 'active' | 'pending' | 'closed';
-}
-
-const mattersData: Matter[] = [
-  {
-    id: '1',
-    title: 'Contract Review - Company A',
-    client: 'John Doe',
-    date: '2024-02-15',
-    status: 'active'
-  },
-  {
-    id: '2',
-    title: 'Legal Consultation - Company B',
-    client: 'Jane Smith',
-    date: '2024-02-14',
-    status: 'pending'
-  },
-  {
-    id: '3',
-    title: 'Case Review - Individual C',
-    client: 'Robert Johnson',
-    date: '2024-02-13',
-    status: 'closed'
-  }
-];
+import type { Matter } from '@/types/matter';
 
 export default function Matters() {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'pending' | 'closed'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'Open' | 'Pending' | 'Closed'>('all');
+  const [matters, setMatters] = useState<Matter[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredMatters = mattersData.filter(matter => {
+  useEffect(() => {
+    const fetchMatters = async () => {
+      try {
+        const response = await fetch('/api/matters');
+        if (!response.ok) {
+          throw new Error('Failed to fetch matters');
+        }
+        const data = await response.json();
+        setMatters(data);
+      } catch (error) {
+        console.error('Error fetching matters:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMatters();
+  }, []);
+
+  const filteredMatters = matters.filter(matter => {
     if (activeFilter === 'all') return true;
     return matter.status === activeFilter;
   });
@@ -60,19 +50,19 @@ export default function Matters() {
               All
             </button>
             <button
-              onClick={() => setActiveFilter('active')}
+              onClick={() => setActiveFilter('Open')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                activeFilter === 'active'
+                activeFilter === 'Open'
                   ? 'bg-[#00A3B4] text-white'
                   : 'bg-[#2D2D2D] text-white hover:bg-[#3D3D3D]'
               }`}
             >
-              Active
+              Open
             </button>
             <button
-              onClick={() => setActiveFilter('pending')}
+              onClick={() => setActiveFilter('Pending')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                activeFilter === 'pending'
+                activeFilter === 'Pending'
                   ? 'bg-[#00A3B4] text-white'
                   : 'bg-[#2D2D2D] text-white hover:bg-[#3D3D3D]'
               }`}
@@ -80,9 +70,9 @@ export default function Matters() {
               Pending
             </button>
             <button
-              onClick={() => setActiveFilter('closed')}
+              onClick={() => setActiveFilter('Closed')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                activeFilter === 'closed'
+                activeFilter === 'Closed'
                   ? 'bg-[#00A3B4] text-white'
                   : 'bg-[#2D2D2D] text-white hover:bg-[#3D3D3D]'
               }`}
@@ -119,43 +109,59 @@ export default function Matters() {
               <thead>
                 <tr className="border-b border-[#2D2D2D]">
                   <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">Date</th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">Title</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">Client</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">Case Number</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">Practice Area</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">Status</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-gray-400">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredMatters.map((matter) => (
-                  <tr key={matter.id} className="border-b border-[#2D2D2D] last:border-b-0 hover:bg-[#2D2D2D] transition-colors">
-                    <td className="px-6 py-4 text-white">
-                      {formatDate(matter.date)}
-                    </td>
-                    <td className="px-6 py-4 text-white">{matter.title}</td>
-                    <td className="px-6 py-4 text-white">{matter.client}</td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          matter.status === 'active'
-                            ? 'bg-[#1A4731] text-[#34D399]'
-                            : matter.status === 'pending'
-                            ? 'bg-[#3F3F00] text-[#FCD34D]'
-                            : 'bg-[#4C0519] text-[#F87171]'
-                        }`}
-                      >
-                        {matter.status.charAt(0).toUpperCase() + matter.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Link 
-                        href={`/matters/${matter.id}`}
-                        className="text-[#00A3B4] hover:text-[#008999] transition-colors"
-                      >
-                        View
-                      </Link>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-4 text-center text-gray-400">
+                      Loading matters...
                     </td>
                   </tr>
-                ))}
+                ) : filteredMatters.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-4 text-center text-gray-400">
+                      No matters found
+                    </td>
+                  </tr>
+                ) : (
+                  filteredMatters.map((matter) => (
+                    <tr key={matter.id} className="border-b border-[#2D2D2D] last:border-b-0 hover:bg-[#2D2D2D] transition-colors">
+                      <td className="px-6 py-4 text-white">
+                        {formatDate(matter.createdAt.toString())}
+                      </td>
+                      <td className="px-6 py-4 text-white">{matter.client}</td>
+                      <td className="px-6 py-4 text-white">{matter.caseNumber}</td>
+                      <td className="px-6 py-4 text-white">{matter.practiceArea}</td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            matter.status === 'Open'
+                              ? 'bg-[#1A4731] text-[#34D399]'
+                              : matter.status === 'Pending'
+                              ? 'bg-[#3F3F00] text-[#FCD34D]'
+                              : 'bg-[#4C0519] text-[#F87171]'
+                          }`}
+                        >
+                          {matter.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Link 
+                          href={`/matters/${matter.id}`}
+                          className="text-[#00A3B4] hover:text-[#008999] transition-colors"
+                        >
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

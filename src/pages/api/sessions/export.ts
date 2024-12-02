@@ -2,6 +2,25 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { getDb } from '@/lib/db';
 import { formatDate, formatTime } from '@/utils/format';
 
+interface SessionTotals {
+  totalHours: number;
+  billableHours: number;
+  billableAmount: number;
+}
+
+interface SessionDocument {
+  date: Date;
+  startTime: Date;
+  endTime?: Date;
+  duration: number;
+  attorney: string;
+  notes?: string;
+  billable: boolean;
+  billingRate: number;
+  matterName: string;
+  clientName: string;
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -61,10 +80,10 @@ export default async function handler(
         },
         { $sort: { date: 1, startTime: 1 } }
       ])
-      .toArray();
+      .toArray() as SessionDocument[];
 
     // Calculate totals
-    const totals = sessions.reduce((acc, session) => ({
+    const totals = sessions.reduce((acc: SessionTotals, session: SessionDocument) => ({
       totalHours: acc.totalHours + (session.duration / 60),
       billableHours: acc.billableHours + (session.billable ? session.duration / 60 : 0),
       billableAmount: acc.billableAmount + (session.billable ? (session.duration / 60) * session.billingRate : 0)
@@ -75,7 +94,7 @@ export default async function handler(
       // Header row
       ['Date', 'Matter', 'Client', 'Attorney', 'Start Time', 'End Time', 'Duration (hrs)', 'Billable', 'Rate', 'Amount', 'Notes'].join(','),
       // Data rows
-      ...sessions.map(session => [
+      ...sessions.map((session: SessionDocument) => [
         formatDate(session.date),
         `"${session.matterName}"`,
         `"${session.clientName}"`,
