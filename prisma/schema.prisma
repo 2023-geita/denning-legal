@@ -1,0 +1,114 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Matter {
+  id                 String              @id @default(cuid())
+  client             String
+  status             String              @default("Open")
+  notes              String?
+  originatingAttorney String
+  responsibleAttorney String
+  courtLocation      String?
+  practiceArea       String
+  caseNumber         String              @unique
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deadlines          MatterDeadline[]
+  documents          MatterDocument[]
+  subscribedAttorneys SubscribedAttorney[]
+}
+
+model MatterDeadline {
+  id                   String   @id @default(cuid())
+  matterId             String
+  matterOpens          DateTime
+  matterCloses         DateTime
+  matterDue            DateTime
+  statuteOfLimitations DateTime
+  matter               Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
+}
+
+model MatterDocument {
+  id         String   @id @default(cuid())
+  matterId   String
+  name       String
+  url        String
+  type       String
+  uploadedAt DateTime @default(now())
+  matter     Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
+}
+
+model SubscribedAttorney {
+  id           String @id @default(cuid())
+  matterId     String
+  attorneyName String
+  matter       Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+}
+
+model Client {
+  id                 String   @id @default(cuid())
+  name               String
+  type               String   @default("Individual")
+  email              String   @unique
+  phone              String
+  location           String?
+  responsibleAttorney String
+  status             String   @default("Active")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  name        String
+  url         String
+  type        String
+  status      String   @default("Draft")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  matterId    String
+  startTime   DateTime @default(now())
+  endTime     DateTime?
+  duration    Int?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  status      String   @default("Pending")
+  priority    String   @default("Medium")
+  dueDate     DateTime?
+  assignedTo  String?
+  matterId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Billing {
+  id          String   @id @default(cuid())
+  clientId    String
+  matterId    String
+  amount      Float
+  status      String   @default("Unpaid")
+  dueDate     DateTime
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+} 

@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-rgb: 0, 0, 0;
+  --surface-dark: #1A1A1A;
+  --surface-darker: #2D2D2D;
+  --accent-blue: #00A3B4;
+  --accent-yellow: #FFD700;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+}
+
+@layer base {
+  * {
+    @apply border-gray-800;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-[#1A1A1A] rounded-xl p-6;
+  }
+  
+  .input {
+    @apply bg-[#2D2D2D] border-0 rounded-lg px-4 py-2 text-white placeholder-gray-500 w-full;
+  }
+  
+  .select {
+    @apply bg-[#2D2D2D] border-0 rounded-lg px-4 py-2 text-white w-full;
+  }
+  
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors;
+  }
+  
+  .btn-primary {
+    @apply bg-[#FFD700] hover:bg-[#FFE033] text-black;
+  }
+  
+  .btn-secondary {
+    @apply bg-[#2D2D2D] hover:bg-[#3D3D3D] text-white;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-700 text-white;
+  }
+  
+  .filter-tab {
+    @apply px-4 py-1.5 rounded-full text-sm;
+  }
+  
+  .filter-tab-active {
+    @apply bg-[#00A3B4] text-white;
+  }
+  
+  .filter-tab-inactive {
+    @apply bg-[#1A1A1A] text-white border border-gray-700;
+  }
+  
+  .section-title {
+    @apply text-xl font-medium mb-6;
+  }
+  
+  .progress-sidebar {
+    @apply w-64 shrink-0 space-y-4;
+  }
+  
+  .main-content {
+    @apply flex-1 space-y-6;
+  }
+  
+  .form-group {
+    @apply space-y-2;
+  }
+  
+  .form-label {
+    @apply block text-sm text-gray-400;
+  }
+  
+  .action-buttons {
+    @apply flex justify-end space-x-3 mt-6;
+  }
+} 
