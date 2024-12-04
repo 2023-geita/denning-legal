@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,6 +5,101 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// User and Authentication Models
+model User {
+  id            String    @id @default(uuid())
+  name          String?
+  email         String?   @unique
+  password      String?
+  role          UserRole?
+  active        Boolean   @default(true)
+  emailVerified DateTime?
+  image         String?
+  lastLogin     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  profile       UserProfile?
+  accounts      Account[]
+  sessions      Session[]
+  matters       Matter[]        @relation("AssignedMatters")
+  tasks         Task[]         @relation("AssignedTasks")
+  notifications Notification[]
+  documents     Document[]     @relation("UploadedDocuments")
+
+  @@map("users")
+}
+
+model Account {
+  id                 String  @id @default(uuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model UserProfile {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  phoneNumber   String?
+  position      String?
+  department    String?
+  avatar        String?
+  bio           String?
+  settings      Json?     @default("{}")
+  
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  userId      String
+  type        NotificationType
+  title       String
+  message     String
+  read        Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  data        Json?
+  
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
 }
 
 // Matter model and related models
@@ -23,11 +115,14 @@ model Matter {
   caseNumber         String
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
+  
+  // Relations
   deadlines          MatterDeadline[]
   documents          MatterDocument[]
   subscribedAttorneys SubscribedAttorney[]
-  sessions           Session[]
+  billableSessions   BillableSession[]
   tasks              Task[]
+  assignedUsers      User[]            @relation("AssignedMatters")
 
   @@map("matters")
 }
@@ -39,6 +134,7 @@ model MatterDeadline {
   matterCloses        DateTime
   matterDue           DateTime
   statuteOfLimitations DateTime
+  
   matter              Matter    @relation(fields: [matterId], references: [id], onDelete: Cascade)
 
   @@map("matter_deadlines")
@@ -48,6 +144,7 @@ model SubscribedAttorney {
   id           String  @id @default(uuid())
   matterId     String
   attorneyName String
+  
   matter       Matter  @relation(fields: [matterId], references: [id], onDelete: Cascade)
 
   @@map("subscribed_attorneys")
@@ -60,13 +157,14 @@ model MatterDocument {
   url        String
   type       String
   uploadedAt DateTime @default(now())
+  
   matter     Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
 
   @@map("matter_documents")
 }
 
-// Session model
-model Session {
+// Billable Session model
+model BillableSession {
   id          String        @id @default(uuid())
   matterId    String
   matterName  String
@@ -79,9 +177,10 @@ model Session {
   date        DateTime
   status      SessionStatus
   billable    Boolean
+  
   matter      Matter        @relation(fields: [matterId], references: [id])
 
-  @@map("sessions")
+  @@map("billable_sessions")
 }
 
 // Task model
@@ -99,7 +198,9 @@ model Task {
   updatedAt       DateTime    @updatedAt
   reminder        Boolean
   reminderDate    DateTime?
+  
   matter          Matter      @relation(fields: [matterId], references: [id])
+  assignedUser    User        @relation("AssignedTasks", fields: [assignedAttorney], references: [id])
 
   @@map("tasks")
 }
@@ -116,25 +217,29 @@ model Client {
   status             ClientStatus
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
+  
+  bills              Bill[]
 
   @@map("clients")
 }
 
 // Document model
 model Document {
-  id           String         @id @default(uuid())
+  id           String           @id @default(uuid())
   name         String
   type         DocumentType
   status       DocumentStatus
   matterId     String
   matterName   String
   uploadedBy   String
-  uploadedAt   DateTime       @default(now())
-  lastModified DateTime       @updatedAt
+  uploadedAt   DateTime         @default(now())
+  lastModified DateTime         @updatedAt
   fileUrl      String
   fileSize     Int
   tags         String[]
+  
   versions     DocumentVersion[]
+  uploader     User             @relation("UploadedDocuments", fields: [uploadedBy], references: [id])
 
   @@map("documents")
 }
@@ -148,6 +253,7 @@ model DocumentVersion {
   fileUrl    String
   fileSize   Int
   changes    String?
+  
   document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@map("document_versions")
@@ -169,7 +275,9 @@ model Bill {
   dueDate       DateTime
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+  
   payments      Payment[]
+  client        Client      @relation(fields: [clientId], references: [id])
 
   @@map("bills")
 }
@@ -182,12 +290,28 @@ model Payment {
   paymentMethod PaymentMethod
   reference     String
   notes         String?
+  
   bill          Bill          @relation(fields: [billId], references: [id], onDelete: Cascade)
 
   @@map("payments")
 }
 
 // Enums
+enum UserRole {
+  ADMIN
+  ATTORNEY
+  STAFF
+}
+
+enum NotificationType {
+  MATTER_ASSIGNED
+  TASK_DUE
+  DOCUMENT_SHARED
+  DEADLINE_APPROACHING
+  BILL_CREATED
+  PAYMENT_RECEIVED
+}
+
 enum MatterStatus {
   Open
   Pending
@@ -246,153 +370,4 @@ enum PaymentMethod {
   BankTransfer
   CreditCard
   Check
-}
-
-// Add these models at the top of the file, before existing models
-
-model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  name          String
-  password      String
-  role          UserRole
-  active        Boolean   @default(true)
-  lastLogin     DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  profile       UserProfile?
-  sessions      Session[]
-  documents     Document[]
-  matters       Matter[]  @relation("AssignedMatters")
-  tasks         Task[]    @relation("AssignedTasks")
-  notifications Notification[]
-
-  @@map("users")
-}
-
-model UserProfile {
-  id            String    @id @default(uuid())
-  userId        String    @unique
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  phoneNumber   String?
-  position      String?
-  department    String?
-  avatar        String?
-  bio          String?
-  settings      Json?     @default("{}")
-
-  @@map("user_profiles")
-}
-
-model Notification {
-  id          String    @id @default(uuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type        NotificationType
-  title       String
-  message     String
-  read        Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  data        Json?
-
-  @@map("notifications")
-}
-
-model Session {
-  id           String   @id @default(uuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token        String   @unique
-  expires      DateTime
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@map("sessions")
-}
-
-// Add these enums at the bottom of the file
-enum UserRole {
-  ADMIN
-  ATTORNEY
-  STAFF
-}
-
-enum NotificationType {
-  MATTER_ASSIGNED
-  TASK_DUE
-  DOCUMENT_SHARED
-  DEADLINE_APPROACHING
-  BILL_CREATED
-  PAYMENT_RECEIVED
-}
-
-// NextAuth.js Models
-model Account {
-  id                 String  @id @default(uuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?  @db.Text
-  session_state      String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-  @@map("accounts")
-}
-
-model Session {
-  id           String   @id @default(uuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("auth_sessions")
-}
-
-model User {
-  id            String    @id @default(uuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
-
-  @@map("users")
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-  @@map("verification_tokens")
-}
-
-// Rename Session to BillableSession
-model BillableSession {
-  id          String        @id @default(uuid())
-  matterId    String
-  matterName  String
-  startTime   DateTime
-  endTime     DateTime?
-  duration    Int          // in minutes
-  notes       String?
-  attorney    String
-  billingRate Float
-  date        DateTime
-  status      SessionStatus
-  billable    Boolean
-  matter      Matter        @relation(fields: [matterId], references: [id])
-
-  @@map("billable_sessions")
 } 
