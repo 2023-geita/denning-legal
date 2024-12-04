@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
+import React, { useState } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import AIChatSidebar from './AIChatSidebar';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,36 +9,50 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const router = useRouter();
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
 
-  // Automatically open sidebar on home/chat page
-  useEffect(() => {
-    if (router.pathname === '/') {
-      setIsSidebarOpen(true);
-    }
-  }, [router.pathname]);
+  const handleSidebarClose = () => {
+    setIsSidebarOpen(false);
+  };
 
-  const toggleSidebar = () => {
+  const handleAIChatClose = () => {
+    setIsAIChatOpen(false);
+  };
+
+  const handleMenuClick = () => {
     setIsSidebarOpen(!isSidebarOpen);
+    setIsAIChatOpen(false); // Close AI chat when menu is clicked
+  };
+
+  const handleChatClick = () => {
+    setIsAIChatOpen(!isAIChatOpen);
+    setIsSidebarOpen(false); // Close menu when chat is clicked
   };
 
   return (
     <div className="min-h-screen bg-black">
-      <Header onMenuClick={toggleSidebar} />
-      <div className="pt-16 min-h-screen">
-        <div className="flex relative h-[calc(100vh-4rem)]">
-          <Sidebar isOpen={isSidebarOpen} />
-          <main 
-            className={`flex-1 transition-all duration-300 ${
-              isSidebarOpen ? 'ml-72' : 'ml-0'
-            }`}
-          >
-            <div className="p-6">
-              {children}
-            </div>
-          </main>
-        </div>
+      <Header 
+        onMenuClick={handleMenuClick} 
+        onChatClick={handleChatClick}
+      />
+      
+      {/* Navigation Sidebar */}
+      <div className="fixed top-16 left-0 bottom-0 w-72 z-40">
+        <Sidebar isOpen={isSidebarOpen} onClose={handleSidebarClose} />
       </div>
+
+      {/* AI Chat Sidebar */}
+      <AIChatSidebar isOpen={isAIChatOpen} onClose={handleAIChatClose} />
+      
+      <main 
+        className={`pt-16 transition-all duration-300 ${
+          isSidebarOpen || isAIChatOpen ? 'ml-72' : 'ml-0'
+        }`}
+      >
+        <div className="h-[calc(100vh-4rem)] overflow-y-auto">
+          {children}
+        </div>
+      </main>
     </div>
   );
 } 

@@ -1,132 +1,124 @@
 import React, { useState } from 'react';
+import { useRouter } from 'next/router';
 import Layout from '@/components/layout/Layout';
-import Link from 'next/link';
+import { Card, Button, Select, Input } from '@/components/common';
 
 export default function NewBill() {
+  const router = useRouter();
   const [selectedClient, setSelectedClient] = useState('');
   const [selectedMatter, setSelectedMatter] = useState('');
 
+  const clientOptions = [
+    { value: '', label: 'Select client to bill' },
+    { value: '1', label: 'John Doe' },
+    { value: '2', label: 'Jane Smith' }
+  ];
+
+  const matterOptions = [
+    { value: '', label: 'Select matter' },
+    { value: '1', label: 'Contract Review' },
+    { value: '2', label: 'Legal Consultation' }
+  ];
+
   return (
     <Layout>
-      <div className="px-6 py-6">
-        <h1 className="text-2xl font-bold text-white mb-8">Billing Details</h1>
-
-        <div className="grid grid-cols-12 gap-6">
-          {/* Left Column */}
-          <div className="col-span-3">
-            {/* Progress Section */}
-            <div className="bg-[#1A1A1A] rounded-2xl p-6 mb-6">
-              <h3 className="text-sm font-medium text-gray-400 mb-4">PROGRESS</h3>
-              <div className="flex items-center space-x-3">
-                <div className="w-6 h-6 bg-[#FFD700] rounded-full flex items-center justify-center">
-                  <span className="text-black text-sm">1</span>
-                </div>
-                <span className="text-white">Billing Details</span>
-              </div>
-            </div>
-
-            {/* Recent Invoices */}
-            <div className="bg-[#1A1A1A] rounded-2xl p-6">
-              <h3 className="text-sm font-medium text-gray-400 mb-4">RECENT INVOICES</h3>
-            </div>
+      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold text-white">New Bill</h1>
+            <p className="mt-2 text-sm text-gray-400">Create a new bill for client matter</p>
           </div>
 
-          {/* Right Column - Billing Details Form */}
-          <div className="col-span-9">
-            <div className="bg-[#1A1A1A] rounded-2xl p-8">
-              <div className="grid grid-cols-2 gap-x-8 gap-y-6">
-                {/* Left Side */}
+          {/* Main Card */}
+          <Card className="bg-[#1A1A1A] p-6">
+            <div className="space-y-6">
+              {/* Client and Matter Selection */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Client</label>
-                    <select
-                      value={selectedClient}
-                      onChange={(e) => setSelectedClient(e.target.value)}
-                      className="w-full bg-[#2D2D2D] text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-1 focus:ring-[#3D3D3D] appearance-none"
-                    >
-                      <option value="">Select client to bill</option>
-                      <option value="1">John Doe</option>
-                      <option value="2">Jane Smith</option>
-                    </select>
-                  </div>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">Client</label>
+                  <Select
+                    options={clientOptions}
+                    value={selectedClient}
+                    onChange={(e) => setSelectedClient(e.target.value)}
+                  />
+                </div>
 
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Total cost</label>
-                    <div className="bg-[#2D2D2D] text-white rounded-lg px-4 py-3">
-                      780,000
-                    </div>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">Matter</label>
+                  <Select
+                    options={matterOptions}
+                    value={selectedMatter}
+                    onChange={(e) => setSelectedMatter(e.target.value)}
+                  />
+                </div>
+              </div>
 
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Retainer fee</label>
-                    <div className="bg-[#2D2D2D] text-white rounded-lg px-4 py-3">
-                      100,000
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Unpaid Balance</label>
-                    <div className="bg-[#2D2D2D] text-white rounded-lg px-4 py-3">
-                      584,000
-                    </div>
+              {/* Billing Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">Total Cost</label>
+                  <div className="bg-[#2D2D2D] text-white rounded-lg px-4 py-3">
+                    KSh 780,000
                   </div>
                 </div>
 
-                {/* Right Side */}
                 <div>
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Matter</label>
-                    <select
-                      value={selectedMatter}
-                      onChange={(e) => setSelectedMatter(e.target.value)}
-                      className="w-full bg-[#2D2D2D] text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-1 focus:ring-[#3D3D3D] appearance-none"
-                    >
-                      <option value="">Select matter</option>
-                      <option value="1">Contract Review</option>
-                      <option value="2">Legal Consultation</option>
-                    </select>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">Paid Amount</label>
+                  <div className="bg-[#2D2D2D] text-white rounded-lg px-4 py-3">
+                    KSh 116,000
                   </div>
+                </div>
 
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Paid amount</label>
-                    <div className="bg-[#2D2D2D] text-white rounded-lg px-4 py-3">
-                      116,000
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">Retainer Fee</label>
+                  <div className="bg-[#2D2D2D] text-white rounded-lg px-4 py-3">
+                    KSh 100,000
                   </div>
+                </div>
 
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Retainer due</label>
-                    <div className="bg-[#2D2D2D] text-white rounded-lg px-4 py-3">
-                      25/11/2024
-                    </div>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">Retainer Due</label>
+                  <Input
+                    type="date"
+                    className="bg-[#2D2D2D] text-white w-full"
+                  />
+                </div>
+              </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Payment History</label>
-                    <div className="bg-[#2D2D2D] rounded-lg p-4 space-y-2">
-                      <div className="text-sm text-white">KSh. 300,000 on 28/11/2024</div>
-                      <div className="text-sm text-white">KSh. 300,000 on 28/11/2024</div>
-                      <div className="text-sm text-white">KSh. 300,000 on 28/11/2024</div>
-                      <div className="text-sm text-white">KSh. 300,000 on 28/11/2024</div>
-                    </div>
-                  </div>
+              {/* Unpaid Balance */}
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Unpaid Balance</label>
+                <div className="bg-[#2D2D2D] text-white rounded-lg px-4 py-3">
+                  KSh 584,000
+                </div>
+              </div>
+
+              {/* Payment History */}
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Payment History</label>
+                <div className="bg-[#2D2D2D] rounded-lg p-4 space-y-2">
+                  <div className="text-sm text-white">KSh 300,000 on 28/11/2024</div>
+                  <div className="text-sm text-white">KSh 300,000 on 28/11/2024</div>
+                  <div className="text-sm text-white">KSh 300,000 on 28/11/2024</div>
+                  <div className="text-sm text-white">KSh 300,000 on 28/11/2024</div>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center space-x-4 mt-8">
-                <button className="bg-[#FFD700] text-black px-8 py-2 rounded-full hover:bg-[#FFE44D] transition-colors font-medium">
-                  INVOICE
-                </button>
-                <button className="bg-red-600 text-white px-8 py-2 rounded-full hover:bg-red-700 transition-colors font-medium">
-                  EMPTY
-                </button>
-                <button className="bg-[#2D2D2D] text-white px-8 py-2 rounded-full hover:bg-[#3D3D3D] transition-colors font-medium">
-                  SAVE
-                </button>
+              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-800">
+                <Button variant="secondary" onClick={() => router.back()}>
+                  Cancel
+                </Button>
+                <Button variant="danger">
+                  Empty
+                </Button>
+                <Button variant="primary">
+                  Create Bill
+                </Button>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </Layout>

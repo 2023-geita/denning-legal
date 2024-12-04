@@ -24,11 +24,28 @@ yarn-error.log*
 
 # local env files
 .env*.local
-.env
+.env.development.local
+.env.test.local
+.env.production.local
 
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts 
+next-env.d.ts
+
+# IDE
+.idea/
+.vscode/
+
+# Docker volumes
+postgres_data/
+
+# Prisma
+/prisma/migrations/
+/prisma/.env
+
+# Logs
+logs
+*.log

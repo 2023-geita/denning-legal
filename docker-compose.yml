@@ -1,0 +1,37 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:latest
+    container_name: denning_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-denning}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-denningpass}
+      POSTGRES_DB: ${POSTGRES_DB:-denning_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - denning_network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: denning_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@denning.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - denning_network
+
+volumes:
+  postgres_data:
+
+networks:
+  denning_network:
+    driver: bridge 

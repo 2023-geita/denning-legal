@@ -1,29 +1,126 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '@/components/layout/Layout';
 import { Card, Button, Input, Select } from '@/components/common';
 import type { Document, DocumentType } from '@/types/document';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Heading from '@tiptap/extension-heading';
+import Table from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
 
 interface FormData {
   name: string;
   type: DocumentType;
   matterId: string;
   matterName: string;
-  uploadedBy: string;
+  draftedBy: string;
   tags: string[];
+  content: string;
 }
 
-export default function NewDocument() {
+const MenuBar = ({ editor }: { editor: any }) => {
+  if (!editor) {
+    return null;
+  }
+
+  return (
+    <div className="border-b border-[#2D2D2D] p-2 flex flex-wrap gap-2">
+      <button
+        onClick={() => editor.chain().focus().toggleBold().run()}
+        className={`px-2 py-1 rounded ${editor.isActive('bold') ? 'bg-[#2D2D2D]' : ''}`}
+      >
+        bold
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+        className={`px-2 py-1 rounded ${editor.isActive('italic') ? 'bg-[#2D2D2D]' : ''}`}
+      >
+        italic
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleStrike().run()}
+        className={`px-2 py-1 rounded ${editor.isActive('strike') ? 'bg-[#2D2D2D]' : ''}`}
+      >
+        strike
+      </button>
+      <button
+        onClick={() => editor.chain().focus().setParagraph().run()}
+        className={`px-2 py-1 rounded ${editor.isActive('paragraph') ? 'bg-[#2D2D2D]' : ''}`}
+      >
+        paragraph
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+        className={`px-2 py-1 rounded ${editor.isActive('heading', { level: 1 }) ? 'bg-[#2D2D2D]' : ''}`}
+      >
+        h1
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        className={`px-2 py-1 rounded ${editor.isActive('heading', { level: 2 }) ? 'bg-[#2D2D2D]' : ''}`}
+      >
+        h2
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        className={`px-2 py-1 rounded ${editor.isActive('bulletList') ? 'bg-[#2D2D2D]' : ''}`}
+      >
+        bullet list
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        className={`px-2 py-1 rounded ${editor.isActive('orderedList') ? 'bg-[#2D2D2D]' : ''}`}
+      >
+        ordered list
+      </button>
+      <button
+        onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+        className="px-2 py-1 rounded hover:bg-[#2D2D2D]"
+      >
+        insert table
+      </button>
+    </div>
+  );
+};
+
+export default function DraftDocument() {
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState('upload');
+  const [activeSection, setActiveSection] = useState('draft');
   const [activeFilter, setActiveFilter] = useState('all');
   const [formData, setFormData] = useState<FormData>({
     name: '',
     type: 'Agreement',
     matterId: '',
     matterName: '',
-    uploadedBy: '',
-    tags: []
+    draftedBy: '',
+    tags: [],
+    content: ''
+  });
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Heading,
+      Table,
+      TableRow,
+      TableHeader,
+      TableCell,
+    ],
+    content: '',
+    editorProps: {
+      attributes: {
+        class: 'prose prose-invert max-w-none focus:outline-none min-h-[400px] px-4',
+      },
+    },
+    onUpdate: ({ editor }) => {
+      setFormData(prev => ({
+        ...prev,
+        content: editor.getHTML()
+      }));
+    },
   });
 
   const documentTypes = [
@@ -53,7 +150,8 @@ export default function NewDocument() {
 
   const handleSubmit = async () => {
     try {
-      // TODO: Implement form submission
+      // TODO: Implement form submission with content
+      console.log('Document content:', formData.content);
       router.push('/docs');
     } catch (error) {
       console.error('Error creating document:', error);
@@ -61,22 +159,10 @@ export default function NewDocument() {
   };
 
   const handleSectionChange = (sectionId: string) => {
-    if (sectionId === 'draft') {
-      router.push('/docs/draft/new');
-    } else {
-      setActiveSection(sectionId);
-      const element = document.getElementById(sectionId);
-      if (element) {
-        const offset = 100; // Offset for header
-        const elementPosition = element.getBoundingClientRect().top;
-        const offsetPosition = elementPosition + window.pageYOffset - offset;
-        
-        window.scrollTo({
-          top: offsetPosition,
-          behavior: 'smooth'
-        });
-      }
+    if (sectionId === 'upload') {
+      router.push('/docs/new');
     }
+    setActiveSection(sectionId);
   };
 
   const handleFilterClick = (filterId: string) => {
@@ -178,10 +264,10 @@ export default function NewDocument() {
                 </div>
 
                 <Input
-                  label="Uploaded By"
+                  label="Drafted By"
                   placeholder="Search attorney by name"
-                  value={formData.uploadedBy}
-                  onChange={(e) => handleInputChange('uploadedBy', e.target.value)}
+                  value={formData.draftedBy}
+                  onChange={(e) => handleInputChange('draftedBy', e.target.value)}
                 />
 
                 <div>
@@ -225,6 +311,15 @@ export default function NewDocument() {
                   <p className="text-sm text-gray-400 mt-1">
                     Press comma (,) to add a tag
                   </p>
+                </div>
+
+                {/* Rich Text Editor */}
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Document Content</label>
+                  <div className="bg-[#2D2D2D] rounded-lg overflow-hidden">
+                    <MenuBar editor={editor} />
+                    <EditorContent editor={editor} className="text-white" />
+                  </div>
                 </div>
               </div>
             </Card>
