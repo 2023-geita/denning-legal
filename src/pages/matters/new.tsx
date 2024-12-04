@@ -1,26 +1,30 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '@/components/layout/Layout';
-import { Card, Button, Input } from '@/components/common';
-import type { Matter, MatterDeadline, SubscribedAttorney } from '@/types/matter';
+import { Card, Button, Input, Select } from '@/components/common';
+import type { Matter } from '@/types/matter';
 
-const sections = [
-  { id: 'details', label: 'Matter Details' },
-  { id: 'deadlines', label: 'Deadlines' },
-  { id: 'attorneys', label: 'Subscribed attorneys' },
-  { id: 'billing', label: 'Billing details' },
-  { id: 'documents', label: 'Related documents' }
-];
+interface FormData {
+  client: string;
+  status: Matter['status'];
+  notes: string;
+  originatingAttorney: string;
+  responsibleAttorney: string;
+  courtLocation: string;
+  practiceArea: string;
+  caseNumber: string;
+  matterOpens: string;
+  matterCloses: string;
+  matterDue: string;
+  statuteOfLimitations: string;
+  subscribedAttorneys: string[];
+}
 
 export default function NewMatter() {
   const router = useRouter();
   const [activeSection, setActiveSection] = useState('details');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-
-  // Form state
-  const [formData, setFormData] = useState({
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [formData, setFormData] = useState<FormData>({
     client: '',
     status: 'Open',
     notes: '',
@@ -29,389 +33,365 @@ export default function NewMatter() {
     courtLocation: '',
     practiceArea: '',
     caseNumber: '',
-    deadlines: {
-      matterOpens: '',
-      matterCloses: '',
-      matterDue: '',
-      statuteOfLimitations: ''
-    },
-    subscribedAttorneys: [] as string[],
-    billingDetails: {
-      rate: '',
-      billingType: '',
-      retainer: ''
-    }
+    matterOpens: '',
+    matterCloses: '',
+    matterDue: '',
+    statuteOfLimitations: '',
+    subscribedAttorneys: []
   });
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
+  const sections = [
+    { id: 'details', label: 'Matter Details', icon: '⚡' },
+    { id: 'deadlines', label: 'Deadlines', icon: '📅' },
+    { id: 'attorneys', label: 'Subscribed attorneys', icon: '👥' },
+    { id: 'billing', label: 'Billing details', icon: '💰' },
+    { id: 'documents', label: 'Related documents', icon: '📄' }
+  ];
 
-  const handleDeadlineChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      deadlines: {
-        ...prev.deadlines,
-        [field]: value
-      }
-    }));
-  };
+  const filters = [
+    { id: 'all', label: 'All' },
+    { id: 'open', label: 'Open' },
+    { id: 'pending', label: 'Pending' },
+    { id: 'closed', label: 'Closed' }
+  ];
 
-  const handleBillingChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      billingDetails: {
-        ...prev.billingDetails,
-        [field]: value
+  // Handle scroll and update active section
+  useEffect(() => {
+    const handleScroll = () => {
+      const sectionElements = sections.map(section => ({
+        id: section.id,
+        element: document.getElementById(section.id)
+      }));
+
+      const currentSection = sectionElements.find(({ element }) => {
+        if (!element) return false;
+        const rect = element.getBoundingClientRect();
+        return rect.top <= 150 && rect.bottom >= 150;
+      });
+
+      if (currentSection) {
+        setActiveSection(currentSection.id);
       }
-    }));
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // Initial check
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const handleInputChange = (field: keyof FormData, value: string | string[]) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async () => {
     try {
-      setIsSubmitting(true);
-      setError('');
-      
-      console.log('Starting matter creation...');
-      console.log('Form data:', formData);
-
-      // Validate required fields
-      if (!formData.client.trim()) {
-        setError('Client name is required');
-        return;
-      }
-
-      const requestData = {
-        client: formData.client,
-        status: formData.status,
-        notes: formData.notes,
-        originatingAttorney: formData.originatingAttorney,
-        responsibleAttorney: formData.responsibleAttorney,
-        courtLocation: formData.courtLocation,
-        practiceArea: formData.practiceArea,
-        caseNumber: formData.caseNumber,
-      };
-
-      console.log('Sending request with data:', requestData);
-
-      const response = await fetch('/api/matters', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      });
-
-      console.log('Response status:', response.status);
-      const responseText = await response.text();
-      console.log('Raw response:', responseText);
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-        console.log('Parsed response:', data);
-      } catch (e) {
-        console.error('Failed to parse response:', e);
-        throw new Error('Invalid response from server');
-      }
-
-      if (!response.ok) {
-        throw new Error(data.message || data.error || 'Failed to create matter');
-      }
-
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to create matter');
-      }
-
-      console.log('Matter created successfully:', data.data);
-      await router.push('/matters');
+      // TODO: Implement form submission
+      router.push('/matters');
     } catch (error) {
       console.error('Error creating matter:', error);
-      setError(error instanceof Error ? error.message : 'Failed to create matter');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY + 200; // Offset for better highlighting
-
-      // Find the current section
-      for (const section of sections) {
-        const element = sectionRefs.current[section.id];
-        if (element) {
-          const { offsetTop, offsetHeight } = element;
-          if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
-            setActiveSection(section.id);
-            break;
-          }
-        }
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const scrollToSection = (sectionId: string) => {
-    const element = sectionRefs.current[sectionId];
+  const handleSectionChange = (sectionId: string) => {
+    setActiveSection(sectionId);
+    const element = document.getElementById(sectionId);
     if (element) {
-      const offset = element.offsetTop - 100; // Adjust offset as needed
+      const offset = 100; // Offset for header
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - offset;
+      
       window.scrollTo({
-        top: offset,
+        top: offsetPosition,
         behavior: 'smooth'
       });
     }
   };
 
+  const handleFilterClick = (filterId: string) => {
+    setActiveFilter(filterId);
+    router.push({
+      pathname: '/matters',
+      query: { filter: filterId }
+    });
+  };
+
   return (
     <Layout>
-      <div className="min-h-screen bg-black">
-        {/* Top Filter Tabs */}
-        <div className="sticky top-16 z-10 bg-black px-6 pt-6 pb-8">
-          <div className="flex items-center justify-between">
+      <div className="min-h-screen p-6">
+        {/* Header with Save Button */}
+        <div className="sticky top-0 bg-black z-10 pb-4 border-b border-[#2D2D2D]">
+          <div className="flex justify-between items-center">
             <div className="flex space-x-2">
-              <button className="px-4 py-2 rounded-full text-sm font-medium bg-[#00A3B4] text-white">All</button>
-              <button className="px-4 py-2 rounded-full text-sm font-medium bg-[#2D2D2D] text-white hover:bg-[#3D3D3D]">Open</button>
-              <button className="px-4 py-2 rounded-full text-sm font-medium bg-[#2D2D2D] text-white hover:bg-[#3D3D3D]">Pending</button>
-              <button className="px-4 py-2 rounded-full text-sm font-medium bg-[#2D2D2D] text-white hover:bg-[#3D3D3D]">Closed</button>
+              {filters.map(filter => (
+                <button
+                  key={filter.id}
+                  onClick={() => handleFilterClick(filter.id)}
+                  className={`filter-tab ${
+                    activeFilter === filter.id ? 'filter-tab-active' : 'filter-tab-inactive'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
             </div>
-            <button 
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="flex items-center space-x-2 bg-[#FFD700] text-black px-4 py-2 rounded-lg hover:bg-[#FFE44D] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="text-sm font-medium">{isSubmitting ? 'Saving...' : 'Save Matter'}</span>
-              <span>⚡</span>
-            </button>
+            <Button variant="primary" onClick={handleSubmit}>
+              SAVE
+            </Button>
           </div>
         </div>
 
-        {/* Main Content Area */}
-        <div className="px-6 pb-6">
-          <div className="flex gap-6">
-            {/* Left Sidebar - Static */}
-            <div className="w-64 shrink-0">
-              <div className="sticky top-48">
-                <div className="rounded-xl bg-[#1A1A1A]/50 p-6">
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-gray-400 uppercase">Progress</h3>
-                    <nav className="space-y-1">
-                      {sections.map((section) => (
-                        <button
-                          key={section.id}
-                          onClick={() => scrollToSection(section.id)}
-                          className="w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors duration-200"
-                        >
-                          <div className={`w-2 h-2 rounded-full transition-colors duration-200 ${
-                            activeSection === section.id ? 'bg-[#FFD700]' : 'bg-gray-400'
-                          }`} />
-                          <span className={`transition-colors duration-200 ${
-                            activeSection === section.id ? 'text-[#FFD700]' : 'text-gray-400'
-                          }`}>
-                            {section.label}
-                          </span>
-                        </button>
-                      ))}
-                    </nav>
-                  </div>
-
-                  <div className="mt-8">
-                    <h3 className="text-sm font-medium text-gray-400 uppercase mb-4">Recent Updates</h3>
-                    {/* Recent updates content */}
-                  </div>
-                </div>
+        <div className="flex gap-6 mt-6">
+          {/* Left Sidebar - Fixed */}
+          <div className="w-64 shrink-0">
+            <Card className="bg-[#1A1A1A] sticky top-[100px]">
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-gray-400 uppercase">Progress</h3>
+                <nav className="space-y-1">
+                  {sections.map((section) => (
+                    <button
+                      key={section.id}
+                      onClick={() => handleSectionChange(section.id)}
+                      className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors ${
+                        activeSection === section.id
+                          ? 'bg-[#2D2D2D] text-[#FFD700]'
+                          : 'hover:bg-[#2D2D2D] text-white'
+                      }`}
+                    >
+                      <span className={activeSection === section.id ? 'text-[#FFD700]' : 'text-gray-400'}>
+                        {section.icon}
+                      </span>
+                      <span>
+                        {section.label}
+                      </span>
+                    </button>
+                  ))}
+                </nav>
               </div>
-            </div>
+            </Card>
+          </div>
 
-            {/* Right Content Area */}
-            <div className="flex-1 space-y-6">
-              {/* Matter Details Section */}
-              <div 
-                ref={el => sectionRefs.current['details'] = el}
-                className="rounded-xl bg-[#1A1A1A]/50 p-6"
-              >
-                <h2 className="text-xl font-medium text-white mb-6">Matter Details</h2>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-2">Client</label>
+          {/* Main Content */}
+          <div className="max-w-3xl flex-1">
+            <div className="space-y-6">
+              <div id="details" className="scroll-mt-[100px]">
+                <Card className="bg-[#1A1A1A]">
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-6">
                       <Input
+                        label="Client"
+                        placeholder="Select Client"
                         value={formData.client}
                         onChange={(e) => handleInputChange('client', e.target.value)}
-                        placeholder="Select Client"
-                        className="bg-[#2D2D2D] text-white"
+                      />
+                      <Select
+                        label="Matter Status"
+                        options={[
+                          { value: 'Open', label: 'Open' },
+                          { value: 'Pending', label: 'Pending' },
+                          { value: 'Closed', label: 'Closed' }
+                        ]}
+                        value={formData.status}
+                        onChange={(e) => handleInputChange('status', e.target.value as Matter['status'])}
                       />
                     </div>
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-2">Matter Status</label>
-                      <select
-                        value={formData.status}
-                        onChange={(e) => handleInputChange('status', e.target.value)}
-                        className="w-full bg-[#2D2D2D] text-white rounded-lg p-3"
-                      >
-                        <option value="Open">Open</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Closed">Closed</option>
-                      </select>
+                      <label className="block text-sm text-gray-400 mb-2">Matter Notes</label>
+                      <textarea
+                        placeholder="Enter Matter description"
+                        className="w-full h-32 bg-[#2D2D2D] border-0 rounded-lg px-4 py-2 text-white placeholder-gray-500 resize-none"
+                        value={formData.notes}
+                        onChange={(e) => handleInputChange('notes', e.target.value)}
+                      />
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Matter Notes</label>
-                    <textarea
-                      value={formData.notes}
-                      onChange={(e) => handleInputChange('notes', e.target.value)}
-                      placeholder="Enter Matter description"
-                      className="w-full h-32 bg-[#2D2D2D] text-white rounded-lg p-3 resize-none"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-2">Originating attorney</label>
+                    <div className="grid grid-cols-2 gap-6">
                       <Input
+                        label="Originating attorney"
+                        placeholder="Search attorney by name"
                         value={formData.originatingAttorney}
                         onChange={(e) => handleInputChange('originatingAttorney', e.target.value)}
-                        placeholder="Search attorney by name"
-                        className="bg-[#2D2D2D] text-white"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-2">Responsible attorney</label>
                       <Input
+                        label="Responsible attorney"
+                        placeholder="Search attorney by name"
                         value={formData.responsibleAttorney}
                         onChange={(e) => handleInputChange('responsibleAttorney', e.target.value)}
-                        placeholder="Search attorney by name"
-                        className="bg-[#2D2D2D] text-white"
                       />
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-2">Court Location</label>
+                    <div className="grid grid-cols-2 gap-6">
                       <Input
+                        label="Court Location"
+                        placeholder="Search court"
                         value={formData.courtLocation}
                         onChange={(e) => handleInputChange('courtLocation', e.target.value)}
-                        placeholder="Search court"
-                        className="bg-[#2D2D2D] text-white"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-2">Practice Area</label>
                       <Input
+                        label="Practice Area"
+                        placeholder="Select Practice Area"
                         value={formData.practiceArea}
                         onChange={(e) => handleInputChange('practiceArea', e.target.value)}
-                        placeholder="Select Practice Area"
-                        className="bg-[#2D2D2D] text-white"
+                      />
+                    </div>
+
+                    <Input
+                      label="Case Number"
+                      placeholder="As provided by the judiciary"
+                      value={formData.caseNumber}
+                      onChange={(e) => handleInputChange('caseNumber', e.target.value)}
+                    />
+                  </div>
+                </Card>
+              </div>
+
+              <div id="deadlines" className="scroll-mt-[100px]">
+                <Card className="bg-[#1A1A1A]">
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-6">
+                      <Input
+                        label="Matter opens"
+                        type="date"
+                        value={formData.matterOpens}
+                        onChange={(e) => handleInputChange('matterOpens', e.target.value)}
+                      />
+                      <Input
+                        label="Matter closes"
+                        type="date"
+                        value={formData.matterCloses}
+                        onChange={(e) => handleInputChange('matterCloses', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                      <Input
+                        label="Matter due"
+                        type="date"
+                        value={formData.matterDue}
+                        onChange={(e) => handleInputChange('matterDue', e.target.value)}
+                      />
+                      <Input
+                        label="Statute of limitations date"
+                        type="date"
+                        value={formData.statuteOfLimitations}
+                        onChange={(e) => handleInputChange('statuteOfLimitations', e.target.value)}
                       />
                     </div>
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Case Number</label>
-                    <Input
-                      value={formData.caseNumber}
-                      onChange={(e) => handleInputChange('caseNumber', e.target.value)}
-                      placeholder="As provided by the judiciary"
-                      className="bg-[#2D2D2D] text-white"
-                    />
-                  </div>
-                </div>
+                </Card>
               </div>
 
-              {/* Deadlines Section */}
-              <div 
-                ref={el => sectionRefs.current['deadlines'] = el}
-                className="rounded-xl bg-[#1A1A1A]/50 p-6"
-              >
-                <h2 className="text-xl font-medium text-white mb-6">Deadlines</h2>
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Matter opens</label>
-                    <Input
-                      type="date"
-                      value={formData.deadlines.matterOpens}
-                      onChange={(e) => handleDeadlineChange('matterOpens', e.target.value)}
-                      className="bg-[#2D2D2D] text-white"
-                    />
+              <div id="attorneys" className="scroll-mt-[100px]">
+                <Card className="bg-[#1A1A1A]">
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">Attorney Name</label>
+                      <Input
+                        placeholder="Search attorney by name"
+                        value=""
+                        onChange={() => {}}
+                      />
+                      <div className="mt-4">
+                        {formData.subscribedAttorneys.map((attorney, index) => (
+                          <div
+                            key={index}
+                            className="inline-flex items-center bg-[#2D2D2D] rounded-lg px-3 py-1 mr-2 mb-2"
+                          >
+                            <span className="text-white mr-2">{attorney}</span>
+                            <button
+                              onClick={() => {
+                                const newAttorneys = formData.subscribedAttorneys.filter((_, i) => i !== index);
+                                handleInputChange('subscribedAttorneys', newAttorneys);
+                              }}
+                              className="text-gray-400 hover:text-white"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Matter closes</label>
-                    <Input
-                      type="date"
-                      value={formData.deadlines.matterCloses}
-                      onChange={(e) => handleDeadlineChange('matterCloses', e.target.value)}
-                      className="bg-[#2D2D2D] text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Matter due</label>
-                    <Input
-                      type="date"
-                      value={formData.deadlines.matterDue}
-                      onChange={(e) => handleDeadlineChange('matterDue', e.target.value)}
-                      className="bg-[#2D2D2D] text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Statute of limitations date</label>
-                    <Input
-                      type="date"
-                      value={formData.deadlines.statuteOfLimitations}
-                      onChange={(e) => handleDeadlineChange('statuteOfLimitations', e.target.value)}
-                      className="bg-[#2D2D2D] text-white"
-                    />
-                  </div>
-                </div>
+                </Card>
               </div>
 
-              {/* Billing Details Section */}
-              <div 
-                ref={el => sectionRefs.current['billing'] = el}
-                className="rounded-xl bg-[#1A1A1A]/50 p-6"
-              >
-                <h2 className="text-xl font-medium text-white mb-6">Billing Details</h2>
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Billing Rate</label>
+              <div id="billing" className="scroll-mt-[100px]">
+                <Card className="bg-[#1A1A1A]">
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-6">
+                      <Input
+                        label="Client"
+                        placeholder="Select client to bill"
+                        value=""
+                        onChange={() => {}}
+                      />
+                      <Input
+                        label="Total cost"
+                        type="number"
+                        placeholder="Enter amount"
+                        value=""
+                        onChange={() => {}}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                      <Input
+                        label="Retainer fee"
+                        type="number"
+                        placeholder="Enter amount"
+                        value=""
+                        onChange={() => {}}
+                      />
+                      <Input
+                        label="Retainer due"
+                        type="date"
+                        value=""
+                        onChange={() => {}}
+                      />
+                    </div>
+
                     <Input
+                      label="Unpaid Balance"
                       type="number"
-                      value={formData.billingDetails.rate}
-                      onChange={(e) => handleBillingChange('rate', e.target.value)}
-                      placeholder="Enter hourly rate"
-                      className="bg-[#2D2D2D] text-white"
+                      placeholder="Enter amount"
+                      value=""
+                      onChange={() => {}}
+                      disabled
                     />
+
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">Payment History</label>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <div>ksh. 200,000 on 28/11/2023</div>
+                        <div>ksh. 200,000 on 28/11/2023</div>
+                        <div>ksh. 200,000 on 28/11/2023</div>
+                        <div>ksh. 200,000 on 28/11/2023</div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Billing Type</label>
-                    <select
-                      value={formData.billingDetails.billingType}
-                      onChange={(e) => handleBillingChange('billingType', e.target.value)}
-                      className="w-full bg-[#2D2D2D] text-white rounded-lg p-3"
-                    >
-                      <option value="">Select billing type</option>
-                      <option value="hourly">Hourly</option>
-                      <option value="fixed">Fixed Fee</option>
-                      <option value="contingency">Contingency</option>
-                    </select>
+                </Card>
+              </div>
+
+              <div id="documents" className="scroll-mt-[100px]">
+                <Card className="bg-[#1A1A1A]">
+                  <div className="space-y-6">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex-1">
+                        <Input
+                          placeholder="Paste url"
+                          value=""
+                          onChange={() => {}}
+                        />
+                      </div>
+                      <span className="text-gray-400">or add from Local files</span>
+                      <Button variant="secondary">ADD FILE</Button>
+                    </div>
+                    <div>
+                      <Button variant="primary">Upload</Button>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Retainer Amount</label>
-                    <Input
-                      type="number"
-                      value={formData.billingDetails.retainer}
-                      onChange={(e) => handleBillingChange('retainer', e.target.value)}
-                      placeholder="Enter retainer amount"
-                      className="bg-[#2D2D2D] text-white"
-                    />
-                  </div>
-                </div>
+                </Card>
               </div>
             </div>
           </div>

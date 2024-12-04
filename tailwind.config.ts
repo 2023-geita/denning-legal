@@ -10,29 +10,25 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#00A3B4',
-          dark: '#007A8A',
-          light: '#33B5C4'
+          DEFAULT: 'var(--accent-blue)',
+          hover: 'var(--accent-blue-hover)',
         },
         secondary: {
-          DEFAULT: '#FFD700',
-          dark: '#B39700',
-          light: '#FFE033'
+          DEFAULT: 'var(--accent-yellow)',
+          hover: 'var(--accent-yellow-hover)',
         },
-        error: {
-          DEFAULT: '#FF0000',
-          dark: '#CC0000',
-          light: '#FF3333'
-        },
-        background: {
-          DEFAULT: '#1A1A1A',
-          dark: '#000000',
-          light: '#333333'
+        danger: {
+          DEFAULT: 'var(--danger)',
+          hover: 'var(--danger-hover)',
         },
         surface: {
-          DEFAULT: '#2D2D2D',
-          dark: '#1F1F1F',
-          light: '#3D3D3D'
+          DEFAULT: 'var(--surface-dark)',
+          darker: 'var(--surface-darker)',
+          hover: 'var(--surface-hover)',
+        },
+        text: {
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
         }
       },
       fontFamily: {
@@ -41,7 +37,21 @@ const config: Config = {
       },
       borderRadius: {
         'DEFAULT': '0.5rem',
-        'lg': '1rem'
+        'lg': '1rem',
+        'xl': '1.25rem',
+        '2xl': '1.5rem',
+      },
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
+        '128': '32rem',
+      },
+      maxWidth: {
+        '8xl': '88rem',
+        '9xl': '96rem',
+      },
+      minHeight: {
+        'screen-without-header': 'calc(100vh - 4rem)',
       }
     },
   },

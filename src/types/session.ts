@@ -1,4 +1,4 @@
-export interface Session {
+export interface BillableSession {
   id: string;
   matterId: string;
   matterName: string;

@@ -2,6 +2,14 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '@/components/layout/Layout';
 import { FiSearch, FiFilter, FiChevronDown, FiChevronUp, FiDollarSign, FiClock, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
+import FilterTabs from '@/components/common/FilterTabs';
+
+const filterTabs = [
+  { id: 'all', label: 'All' },
+  { id: 'paid', label: 'Paid' },
+  { id: 'pending', label: 'Pending' },
+  { id: 'overdue', label: 'Overdue' }
+];
 
 interface Bill {
   id: string;
@@ -73,10 +81,14 @@ export default function Billing() {
   };
 
   const formatAmount = (amount: number): string => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-KE', {
       style: 'currency',
-      currency: 'USD'
-    }).format(amount);
+      currency: 'KES',
+      currencyDisplay: 'narrowSymbol',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount)
+      .replace('KES', 'KSh');
   };
 
   const getStatusColor = (status: Bill['status']) => {
@@ -100,9 +112,25 @@ export default function Billing() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Header with Stats */}
-        <div className="grid grid-cols-4 gap-4">
+      <div className="px-6 py-6">
+        {/* Top Section with Filters and New Bill Button */}
+        <div className="flex justify-between items-center mb-6">
+          <FilterTabs
+            tabs={filterTabs}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
+          <button
+            onClick={handleNewBill}
+            className="flex items-center space-x-2 bg-[#FFD700] text-black px-4 py-2 rounded-lg hover:bg-[#FFE44D] transition-colors whitespace-nowrap"
+          >
+            <span className="text-sm font-medium">New Bill</span>
+            <FiDollarSign className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Stats Section */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
           <div className="bg-[#1A1A1A] p-4 rounded-lg">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-[#FFD700]/10 rounded-lg">
@@ -157,25 +185,8 @@ export default function Billing() {
           </div>
         </div>
 
-        {/* Status Filters */}
-        <div className="flex flex-col space-y-2">
-          <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
-            {['all', 'paid', 'pending', 'overdue'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`filter-tab ${
-                  activeTab === tab ? 'filter-tab-active' : 'filter-tab-inactive'
-                } whitespace-nowrap`}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Search and Filter */}
-        <div className="flex justify-between items-center">
+        {/* Search and Actions */}
+        <div className="flex justify-between items-center mb-6">
           <div className="flex items-center space-x-2">
             {selectedBills.length > 0 && (
               <div className="flex space-x-2">
@@ -300,15 +311,6 @@ export default function Billing() {
             )}
           </div>
         </div>
-
-        {/* New Bill Button */}
-        <button
-          onClick={handleNewBill}
-          className="fixed bottom-8 right-8 inline-flex items-center px-4 py-2 bg-[#1A1A1A] text-white rounded-lg hover:bg-[#2D2D2D] transition-colors"
-        >
-          <span className="text-[#FFD700] mr-2">⚡</span>
-          <span className="text-sm font-medium">New Bill</span>
-        </button>
       </div>
     </Layout>
   );

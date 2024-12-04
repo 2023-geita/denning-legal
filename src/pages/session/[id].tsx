@@ -3,13 +3,25 @@ import { useRouter } from 'next/router';
 import Layout from '@/components/layout/Layout';
 import { Card, Button, Input, Select } from '@/components/common';
 import { FiPlay } from 'react-icons/fi';
-import { Session } from '@/types/session';
+import { BillableSession } from '@/types/session';
 
 export default function SessionDetails() {
   const router = useRouter();
   const { id } = router.query;
-  const [session, setSession] = useState<Partial<Session>>({});
-  const [isEditing, setIsEditing] = useState(!id);
+  const [isEditing, setIsEditing] = useState(false);
+  const [session, setSession] = useState<BillableSession>({
+    id: '',
+    matterId: '',
+    matterName: '',
+    startTime: new Date(),
+    duration: 0,
+    notes: '',
+    attorney: '',
+    billingRate: 0,
+    date: new Date(),
+    status: 'Planned',
+    billable: true
+  });
 
   return (
     <Layout>

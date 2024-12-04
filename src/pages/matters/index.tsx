@@ -3,6 +3,14 @@ import Layout from '@/components/layout/Layout';
 import Link from 'next/link';
 import { formatDate } from '@/utils/format';
 import type { Matter } from '@/types/matter';
+import FilterTabs from '@/components/common/FilterTabs';
+
+const filterTabs = [
+  { id: 'all', label: 'All' },
+  { id: 'Open', label: 'Open' },
+  { id: 'Pending', label: 'Pending' },
+  { id: 'Closed', label: 'Closed' }
+];
 
 export default function Matters() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'Open' | 'Pending' | 'Closed'>('all');
@@ -37,48 +45,13 @@ export default function Matters() {
     <Layout>
       <div className="px-6 py-6">
         {/* Filters */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center space-x-3 overflow-x-auto pb-2">
-            <button
-              onClick={() => setActiveFilter('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                activeFilter === 'all'
-                  ? 'bg-[#00A3B4] text-white'
-                  : 'bg-[#2D2D2D] text-white hover:bg-[#3D3D3D]'
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setActiveFilter('Open')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                activeFilter === 'Open'
-                  ? 'bg-[#00A3B4] text-white'
-                  : 'bg-[#2D2D2D] text-white hover:bg-[#3D3D3D]'
-              }`}
-            >
-              Open
-            </button>
-            <button
-              onClick={() => setActiveFilter('Pending')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                activeFilter === 'Pending'
-                  ? 'bg-[#00A3B4] text-white'
-                  : 'bg-[#2D2D2D] text-white hover:bg-[#3D3D3D]'
-              }`}
-            >
-              Pending
-            </button>
-            <button
-              onClick={() => setActiveFilter('Closed')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                activeFilter === 'Closed'
-                  ? 'bg-[#00A3B4] text-white'
-                  : 'bg-[#2D2D2D] text-white hover:bg-[#3D3D3D]'
-              }`}
-            >
-              Closed
-            </button>
+        <div className="filter-container">
+          <div className="filter-tabs-wrapper">
+            <FilterTabs
+              tabs={filterTabs}
+              activeTab={activeFilter}
+              onTabChange={(tabId) => setActiveFilter(tabId as typeof activeFilter)}
+            />
           </div>
           <Link 
             href="/matters/new"
