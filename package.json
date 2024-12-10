@@ -18,6 +18,7 @@
     "docker:migrate": "docker-compose exec app npx prisma migrate deploy"
   },
   "dependencies": {
+    "@auth/mongodb-adapter": "^3.7.4",
     "@auth/prisma-adapter": "^2.7.4",
     "@hookform/resolvers": "^3.3.2",
     "@langchain/langgraph-sdk": "^0.0.32",
@@ -37,7 +38,8 @@
     "autoprefixer": "^10.4.16",
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.0",
-    "mongodb": "^6.11.0",
+    "mongodb": "^6.12.0",
+    "mongoose": "^8.8.4",
     "next": "^14.0.3",
     "next-auth": "^4.24.10",
     "nodemailer": "^6.9.16",
