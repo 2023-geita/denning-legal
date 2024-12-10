@@ -86,11 +86,10 @@ export default function Header({ onMenuClick, onChatClick }: HeaderProps) {
 
         {/* Right Section */}
         <div className="flex items-center space-x-6">
-          <button className="p-2 text-white hover:text-gray-300 transition-colors rounded-lg hover:bg-[#2D2D2D]">
+          <button className="p-2 text-white hover:text-gray-300 transition-colors rounded-lg hover:bg-[#2D2D2D] md:p-3 md:hover:bg-gray-700">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
+              className="w-5 h-5 md:w-6 md:h-6"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -125,4 +124,4 @@ export default function Header({ onMenuClick, onChatClick }: HeaderProps) {
       </nav>
     </header>
   );
-} 
+}

@@ -46,7 +46,7 @@ model Account {
   scope              String?
   id_token           String?  @db.Text
   session_state      String?
-
+  
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
@@ -187,10 +187,11 @@ model BillableSession {
 model Task {
   id              String      @id @default(uuid())
   name            String
+  matter          Matter      @relation(fields: [matterId], references: [id])
   matterId        String
-  matterName      String
   description     String?
   dueDate         DateTime
+  assignedUser    User        @relation("AssignedTasks", fields: [assignedAttorney], references: [id])
   assignedAttorney String
   status          TaskStatus
   priority        TaskPriority
@@ -199,9 +200,6 @@ model Task {
   reminder        Boolean
   reminderDate    DateTime?
   
-  matter          Matter      @relation(fields: [matterId], references: [id])
-  assignedUser    User        @relation("AssignedTasks", fields: [assignedAttorney], references: [id])
-
   @@map("tasks")
 }
 
@@ -229,8 +227,10 @@ model Document {
   name         String
   type         DocumentType
   status       DocumentStatus
+  matter       Matter          @relation(fields: [matterId], references: [id])
   matterId     String
   matterName   String
+  uploader     User            @relation("UploadedDocuments", fields: [uploadedBy], references: [id])
   uploadedBy   String
   uploadedAt   DateTime         @default(now())
   lastModified DateTime         @updatedAt
@@ -239,8 +239,7 @@ model Document {
   tags         String[]
   
   versions     DocumentVersion[]
-  uploader     User             @relation("UploadedDocuments", fields: [uploadedBy], references: [id])
-
+  
   @@map("documents")
 }
 
@@ -370,4 +369,4 @@ enum PaymentMethod {
   BankTransfer
   CreditCard
   Check
-} 
+}

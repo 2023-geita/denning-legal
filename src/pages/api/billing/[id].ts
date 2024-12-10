@@ -21,16 +21,8 @@ export default async function handler(
       const bill = await prisma.bill.findUnique({
         where: { id },
         include: {
-          client: {
-            select: {
-              name: true,
-            },
-          },
-          matter: {
-            select: {
-              name: true,
-            },
-          },
+          client: true,
+          matter: true,
           payments: true,
         },
       });
@@ -39,11 +31,33 @@ export default async function handler(
       }
       return res.status(200).json(bill);
     } catch (error) {
-      return res.status(500).json({ error: 'Failed to fetch bill' });
+      console.error('Failed to fetch bill:', error);
+      res.status(500).json({ error: 'Failed to fetch bill' });
     }
-  }
+  } else if (req.method === 'POST') {
+    try {
+      const { amount, clientId, matterId, status } = req.body;
+      const newBill = await prisma.bill.create({
+        data: {
+          amount,
+          clientId,
+          matterId,
+          status,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+      return res.status(201).json(newBill);
+    } catch (error) {
+      console.error('Failed to create bill:', error);
+      res.status(500).json({ error: 'Failed to create bill' });
+    }
+  } else if (req.method === 'PUT') {
+    const { clientId, matterId, totalCost, retainerFee, dueDate } = req.body;
+    if (!clientId || !matterId || !totalCost || !dueDate) {
+      return res.status(400).json({ error: 'Missing required fields: clientId, matterId, totalCost, dueDate' });
+    }
 
-  if (req.method === 'PUT') {
     try {
       const bill = await prisma.bill.update({
         where: { id },
@@ -52,26 +66,15 @@ export default async function handler(
           updatedAt: new Date(),
         },
         include: {
-          client: {
-            select: {
-              name: true,
-            },
-          },
-          matter: {
-            select: {
-              name: true,
-            },
-          },
-          payments: true,
+          client: { select: { name: true } },
+          matter: { select: { name: true } },
         },
       });
       return res.status(200).json(bill);
     } catch (error) {
-      return res.status(500).json({ error: 'Failed to update bill' });
+      return res.status(500).json({ error: 'Failed to update bill: ' + error.message });
     }
-  }
-
-  if (req.method === 'DELETE') {
+  } else if (req.method === 'DELETE') {
     try {
       // First delete all related payments
       await prisma.payment.deleteMany({
@@ -87,6 +90,6 @@ export default async function handler(
     }
   }
 
-  res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);
+  res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
   res.status(405).end(`Method ${req.method} Not Allowed`);
-} 
+}

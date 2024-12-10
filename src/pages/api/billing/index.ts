@@ -36,32 +36,55 @@ export default async function handler(
   }
 
   if (req.method === 'POST') {
+    const { clientId, matterId, totalCost, paidAmount, retainerFee, retainerDue, dueDate } = req.body;
+    if (!clientId || !matterId || !totalCost || !dueDate) {
+      return res.status(400).json({ error: 'Missing required fields: clientId, matterId, totalCost, dueDate' });
+    }
+
     try {
-      const bill = await prisma.bill.create({
+      const newBill = await prisma.bill.create({
         data: {
-          ...req.body,
+          clientId,
+          matterId,
+          totalCost,
+          paidAmount,
+          retainerFee,
+          retainerDue,
+          dueDate,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
-        include: {
-          client: {
-            select: {
-              name: true,
-            },
-          },
-          matter: {
-            select: {
-              name: true,
-            },
-          },
-        },
       });
-      return res.status(201).json(bill);
+      return res.status(201).json(newBill);
     } catch (error) {
       return res.status(500).json({ error: 'Failed to create bill' });
     }
   }
 
-  res.setHeader('Allow', ['GET', 'POST']);
+  if (req.method === 'PUT') {
+    const { clientId, matterId, totalCost, retainerFee, dueDate } = req.body;
+    if (!clientId || !matterId || !totalCost || !dueDate) {
+      return res.status(400).json({ error: 'Missing required fields: clientId, matterId, totalCost, dueDate' });
+    }
+
+    try {
+      const bill = await prisma.bill.update({
+        where: { id: req.query.id },
+        data: {
+          ...req.body,
+          updatedAt: new Date(),
+        },
+        include: {
+          client: { select: { name: true } },
+          matter: { select: { name: true } },
+        },
+      });
+      return res.status(200).json(bill);
+    } catch (error) {
+      return res.status(500).json({ error: 'Failed to update bill: ' + error.message });
+    }
+  }
+
+  res.setHeader('Allow', ['GET', 'POST', 'PUT']);
   res.status(405).end(`Method ${req.method} Not Allowed`);
-} 
+}
