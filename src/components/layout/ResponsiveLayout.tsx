@@ -54,8 +54,8 @@ export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
     <div className="min-h-screen bg-surface-dark">
       <Header 
         onMenuClick={toggleSidebar}
-        user={session.user}
         isMobile={isMobile}
+        user={session.user}
       />
       
       <div className="pt-16 min-h-[calc(100vh-4rem)]">

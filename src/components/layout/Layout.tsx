@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import AIChatSidebar from './AIChatSidebar';
+import { useSession } from 'next-auth/react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,6 +11,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+  const { data: session } = useSession();
 
   const handleSidebarClose = () => {
     setIsSidebarOpen(false);
@@ -34,6 +36,7 @@ export default function Layout({ children }: LayoutProps) {
       <Header 
         onMenuClick={handleMenuClick} 
         onChatClick={handleChatClick}
+        user={session?.user}
       />
       
       {/* Navigation Sidebar */}

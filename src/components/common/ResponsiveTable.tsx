@@ -1,106 +1,47 @@
 import React from 'react';
 
 interface Column<T> {
-  header: string;
-  accessor: keyof T | ((item: T) => React.ReactNode);
+  key: keyof T;
+  label: string;
   className?: string;
-  isSortable?: boolean;
+  render?: (value: T[keyof T], item: T) => React.ReactNode;
 }
 
-interface ResponsiveTableProps<T> {
-  columns: Column<T>[];
+interface Props<T> {
   data: T[];
-  onRowClick?: (item: T) => void;
-  isLoading?: boolean;
-  sortColumn?: string;
-  sortDirection?: 'asc' | 'desc';
-  onSort?: (column: string) => void;
-  emptyMessage?: string;
+  columns: Column<T>[];
+  className?: string;
 }
 
-export default function ResponsiveTable<T extends { id: string }>({
-  columns,
-  data,
-  onRowClick,
-  isLoading,
-  sortColumn,
-  sortDirection,
-  onSort,
-  emptyMessage = 'No data available'
-}: ResponsiveTableProps<T>) {
-  if (isLoading) {
-    return (
-      <div className="animate-pulse">
-        <div className="h-12 bg-surface-dark rounded-lg mb-4"></div>
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-16 bg-surface-dark rounded-lg mb-2"></div>
-        ))}
-      </div>
-    );
-  }
-
-  if (!data.length) {
-    return (
-      <div className="text-center py-8 text-text-secondary">
-        {emptyMessage}
-      </div>
-    );
-  }
-
-  const renderSortIcon = (column: Column<T>) => {
-    if (!column.isSortable) return null;
-    
-    const isActive = sortColumn === column.accessor;
-    return (
-      <span className={`ml-1 ${isActive ? 'text-primary' : 'text-text-secondary'}`}>
-        {isActive && sortDirection === 'desc' ? '↓' : '↑'}
-      </span>
-    );
-  };
-
-  const renderCellContent = (item: T, column: Column<T>) => {
-    const value = typeof column.accessor === 'function'
-      ? column.accessor(item)
-      : item[column.accessor];
-    
-    return value;
+export default function ResponsiveTable<T>({ data, columns, className = '' }: Props<T>) {
+  const renderCellContent = (item: T, column: Column<T>): React.ReactNode => {
+    const value = item[column.key];
+    return column.render ? column.render(value, item) : value as React.ReactNode;
   };
 
   return (
-    <div>
+    <div className={className}>
       {/* Desktop View */}
-      <div className="hidden md:block overflow-x-auto">
+      <div className="hidden md:block">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-surface-dark">
-              {columns.map((column, index) => (
+            <tr>
+              {columns.map((column) => (
                 <th
-                  key={index}
-                  className={`px-4 py-3 text-left text-sm font-medium text-text-secondary ${
-                    column.className || ''
-                  } ${column.isSortable ? 'cursor-pointer hover:text-text-primary' : ''}`}
-                  onClick={() => column.isSortable && onSort?.(column.accessor as string)}
+                  key={column.key.toString()}
+                  className={`table-header ${column.className || ''}`}
                 >
-                  <span className="flex items-center">
-                    {column.header}
-                    {renderSortIcon(column)}
-                  </span>
+                  {column.label}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {data.map((item) => (
-              <tr
-                key={item.id}
-                className={`border-b border-surface-dark hover:bg-surface-dark transition-colors ${
-                  onRowClick ? 'cursor-pointer' : ''
-                }`}
-                onClick={() => onRowClick?.(item)}
-              >
-                {columns.map((column, index) => (
+            {data.map((item, index) => (
+              <tr key={index} className="table-row">
+                {columns.map((column) => (
                   <td
-                    key={index}
+                    key={column.key.toString()}
                     className={`px-4 py-4 text-sm ${column.className || ''}`}
                   >
                     {renderCellContent(item, column)}
@@ -114,18 +55,12 @@ export default function ResponsiveTable<T extends { id: string }>({
 
       {/* Mobile View */}
       <div className="md:hidden space-y-4">
-        {data.map((item) => (
-          <div
-            key={item.id}
-            className={`bg-surface-dark p-4 rounded-lg space-y-3 ${
-              onRowClick ? 'cursor-pointer' : ''
-            }`}
-            onClick={() => onRowClick?.(item)}
-          >
-            {columns.map((column, index) => (
-              <div key={index} className="flex justify-between items-start">
-                <span className="text-sm text-text-secondary">
-                  {column.header}
+        {data.map((item, index) => (
+          <div key={index} className="bg-[#1A1A1A] rounded-lg p-4 space-y-3">
+            {columns.map((column) => (
+              <div key={column.key.toString()} className="flex justify-between items-center">
+                <span className="text-gray-400 text-sm">
+                  {column.label}
                 </span>
                 <span className={`text-sm text-right ${column.className || ''}`}>
                   {renderCellContent(item, column)}

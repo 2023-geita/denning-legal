@@ -1,84 +1,75 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { ObjectId } from 'mongodb';
-import { documentSchema } from '@/lib/validations/form';
-import { getDocumentsCollection } from '@/lib/db';
-import { ZodError } from 'zod';
+import { prisma } from '@/lib/prisma';
+import { getSession } from 'next-auth/react';
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const { id } = req.query;
+  const session = await getSession({ req });
+  if (!session) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
-  if (typeof id !== 'string' || !ObjectId.isValid(id)) {
+  const { id } = req.query;
+  if (typeof id !== 'string') {
     return res.status(400).json({ error: 'Invalid document ID' });
   }
 
-  const collection = await getDocumentsCollection();
-  const objectId = new ObjectId(id);
-
   if (req.method === 'GET') {
     try {
-      const document = await collection.findOne({ _id: objectId });
+      const document = await prisma.document.findUnique({
+        where: { id },
+        include: {
+          versions: true,
+        },
+      });
 
       if (!document) {
         return res.status(404).json({ error: 'Document not found' });
       }
 
-      res.status(200).json(document);
+      return res.status(200).json(document);
     } catch (error) {
       console.error('Failed to fetch document:', error);
-      res.status(500).json({ error: 'Failed to fetch document' });
+      return res.status(500).json({ error: 'Failed to fetch document' });
     }
   }
 
-  else if (req.method === 'PUT') {
+  if (req.method === 'PUT') {
     try {
-      const validatedData = documentSchema.partial().parse(req.body);
-      
-      const result = await collection.findOneAndUpdate(
-        { _id: objectId },
-        { 
-          $set: {
-            ...validatedData,
-            updatedAt: new Date()
-          }
+      const document = await prisma.document.update({
+        where: { id },
+        data: {
+          ...req.body,
+          updatedAt: new Date(),
         },
-        { returnDocument: 'after' }
-      );
-
-      if (!result?.value) {
-        return res.status(404).json({ error: 'Document not found' });
-      }
-
-      res.status(200).json(result.value);
+        include: {
+          versions: true,
+        },
+      });
+      return res.status(200).json(document);
     } catch (error) {
-      if (error instanceof ZodError) {
-        res.status(400).json({ error: 'Invalid document data', details: error.errors });
-      } else {
-        console.error('Failed to update document:', error);
-        res.status(500).json({ error: 'Failed to update document' });
-      }
+      console.error('Failed to update document:', error);
+      return res.status(500).json({ error: 'Failed to update document' });
     }
   }
 
-  else if (req.method === 'DELETE') {
+  if (req.method === 'DELETE') {
     try {
-      const result = await collection.deleteOne({ _id: objectId });
-
-      if (result.deletedCount === 0) {
-        return res.status(404).json({ error: 'Document not found' });
-      }
-
-      res.status(204).end();
+      await prisma.documentVersion.deleteMany({
+        where: { documentId: id },
+      });
+      await prisma.document.delete({
+        where: { id },
+      });
+      return res.status(204).end();
     } catch (error) {
       console.error('Failed to delete document:', error);
-      res.status(500).json({ error: 'Failed to delete document' });
+      return res.status(500).json({ error: 'Failed to delete document' });
     }
   }
 
-  else {
-    res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-  }
+  res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);
+  res.status(405).end(`Method ${req.method} Not Allowed`);
 } 

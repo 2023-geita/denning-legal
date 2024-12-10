@@ -1,34 +1,28 @@
 import { NextApiHandler } from 'next';
-import NextAuth, { DefaultSession } from 'next-auth';
+import NextAuth from 'next-auth';
 import { PrismaAdapter } from '@auth/prisma-adapter';
+import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
-
-declare module 'next-auth' {
-  interface Session extends DefaultSession {
-    user: {
-      id: string;
-      role?: string;
-    } & DefaultSession['user']
-  }
-
-  interface User {
-    id: string;
-    role?: string;
-  }
-}
-
-declare module 'next-auth/jwt' {
-  interface JWT {
-    id: string;
-    role?: string;
-  }
-}
+import { UserRole } from '@prisma/client';
 
 const authHandler: NextApiHandler = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      profile(profile) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+          image: profile.picture,
+          role: UserRole.ATTORNEY,
+        }
+      },
+    }),
     CredentialsProvider({
       name: 'credentials',
       credentials: {
@@ -36,71 +30,116 @@ const authHandler: NextApiHandler = NextAuth({
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error('Please enter an email and password');
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            throw new Error('Please enter an email and password');
+          }
+
+          console.log('Looking up user:', credentials.email);
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email }
+          });
+
+          if (!user) {
+            console.log('No user found with email:', credentials.email);
+            throw new Error('No user found with this email');
+          }
+
+          if (!user.password) {
+            console.log('User has no password set');
+            throw new Error('Invalid login method');
+          }
+
+          console.log('Comparing passwords...');
+          const isValid = await bcrypt.compare(credentials.password, user.password);
+
+          if (!isValid) {
+            console.log('Invalid password');
+            throw new Error('Invalid password');
+          }
+
+          console.log('Login successful for user:', user.email);
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+            role: user.role,
+          };
+        } catch (error) {
+          console.error('Auth error:', error);
+          throw error;
         }
-
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-          include: { profile: true }
-        });
-
-        if (!user) {
-          throw new Error('No user found with this email');
-        }
-
-        if (!user.active) {
-          throw new Error('This account has been deactivated');
-        }
-
-        const isValid = await bcrypt.compare(credentials.password, user.password);
-
-        if (!isValid) {
-          throw new Error('Invalid password');
-        }
-
-        // Update last login
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { lastLogin: new Date() }
-        });
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          image: user.profile?.avatar
-        };
       }
     })
   ],
   pages: {
     signIn: '/auth/signin',
     error: '/auth/error',
-    verifyRequest: '/auth/verify-request',
   },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.role = user.role;
-        token.id = user.id;
+    async jwt({ token, user, account }) {
+      try {
+        if (user) {
+          token.role = user.role;
+          token.id = user.id;
+        }
+        return token;
+      } catch (error) {
+        console.error('JWT callback error:', error);
+        throw error;
       }
-      return token;
     },
     async session({ session, token }) {
-      if (token && session.user) {
-        session.user.role = token.role;
-        session.user.id = token.id;
+      try {
+        if (session.user) {
+          session.user.role = token.role;
+          session.user.id = token.id;
+        }
+        return session;
+      } catch (error) {
+        console.error('Session callback error:', error);
+        throw error;
       }
-      return session;
+    },
+    async signIn({ user, account, profile }) {
+      try {
+        if (account?.provider === 'google') {
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email! }
+          });
+
+          if (!existingUser) {
+            await prisma.user.create({
+              data: {
+                email: user.email!,
+                name: user.name!,
+                image: user.image,
+                role: UserRole.ATTORNEY,
+              }
+            });
+          }
+        }
+        
+        // Update last login timestamp
+        await prisma.user.update({
+          where: { email: user.email! },
+          data: { lastLogin: new Date() }
+        });
+        
+        return true;
+      } catch (error) {
+        console.error('SignIn callback error:', error);
+        return false;
+      }
     }
   },
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  debug: process.env.NODE_ENV === 'development',
   secret: process.env.NEXTAUTH_SECRET,
-});
+})
 
 export default authHandler; 

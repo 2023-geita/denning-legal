@@ -1,3 +1,5 @@
+import { PaymentMethod } from '@prisma/client';
+
 export interface Bill {
   id: string;
   clientId: string;
@@ -20,7 +22,7 @@ export interface Payment {
   billId: string;
   amount: number;
   paymentDate: Date;
-  paymentMethod: 'Cash' | 'Bank Transfer' | 'Credit Card' | 'Check';
+  paymentMethod: PaymentMethod;
   reference: string;
   notes: string;
 }

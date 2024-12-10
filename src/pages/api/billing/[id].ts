@@ -26,11 +26,6 @@ export default async function handler(
               name: true,
             },
           },
-          matter: {
-            select: {
-              name: true,
-            },
-          },
           payments: true,
         },
       });
@@ -53,11 +48,6 @@ export default async function handler(
         },
         include: {
           client: {
-            select: {
-              name: true,
-            },
-          },
-          matter: {
             select: {
               name: true,
             },

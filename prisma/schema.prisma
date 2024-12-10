@@ -1,3 +1,6 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,60 +10,202 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User and Authentication Models
-model User {
-  id            String    @id @default(uuid())
-  name          String?
-  email         String?   @unique
-  password      String?
-  role          UserRole?
-  active        Boolean   @default(true)
-  emailVerified DateTime?
-  image         String?
-  lastLogin     DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  // Relations
-  profile       UserProfile?
-  accounts      Account[]
-  sessions      Session[]
-  matters       Matter[]        @relation("AssignedMatters")
-  tasks         Task[]         @relation("AssignedTasks")
-  notifications Notification[]
-  documents     Document[]     @relation("UploadedDocuments")
-
-  @@map("users")
+enum UserRole {
+  ADMIN
+  ATTORNEY
+  PARALEGAL
+  STAFF
 }
 
-model Account {
-  id                 String  @id @default(uuid())
-  userId             String
+model User {
+  id              String    @id @default(cuid())
+  name            String?
+  email           String?   @unique
+  emailVerified   DateTime?
+  image           String?
+  password        String?
+  role            UserRole  @default(ATTORNEY)
+  active          Boolean   @default(true)
+  lastLogin       DateTime?
+  resetToken      String?
+  resetTokenExpiry DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  profile         UserProfile?
+  matters         Matter[]
+  sessions        Session[]
+}
+
+model UserProfile {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  phoneNumber String?
+  position    String?
+  department  String?
+  avatar      String?
+  bio         String?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Matter {
+  id                 String    @id @default(cuid())
+  name               String
+  client             String
+  status             String
+  notes              String?
+  originatingAttorney String
+  responsibleAttorney String
+  courtLocation      String
+  practiceArea       String
+  caseNumber         String
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deadlines          MatterDeadline[]
+  documents          MatterDocument[]
+  subscribedAttorneys SubscribedAttorney[]
+  assignedUsers      User[]
+  billableSessions   BillableSession[]
+  tasks              Task[]
+}
+
+model MatterDeadline {
+  id                   String   @id @default(cuid())
+  matterId             String
+  matterOpens          DateTime
+  matterCloses         DateTime
+  matterDue            DateTime
+  statuteOfLimitations DateTime
+  matter               Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
+}
+
+model SubscribedAttorney {
+  id           String @id @default(cuid())
+  matterId     String
+  attorneyName String
+  matter       Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+}
+
+model MatterDocument {
+  id         String   @id @default(cuid())
+  matterId   String
+  name       String
+  url        String
+  type       String
+  uploadedAt DateTime
+  matter     Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
+}
+
+model Document {
+  id           String   @id @default(cuid())
+  name         String
+  type         String
+  status       String
+  matterId     String
+  matterName   String
+  uploadedBy   String
+  uploadedAt   DateTime @default(now())
+  lastModified DateTime @updatedAt
+  fileUrl      String
+  fileSize     Int
+  tags         String[]
+  versions     DocumentVersion[]
+}
+
+model DocumentVersion {
+  id         String   @id @default(cuid())
+  documentId String
+  version    Int
+  uploadedBy String
+  uploadedAt DateTime @default(now())
+  fileUrl    String
+  fileSize   Int
+  changes    String?
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id              String   @id @default(cuid())
+  name            String
+  matterId        String
+  matterName      String
+  description     String?
+  dueDate         DateTime
+  assignedAttorney String
+  status          String
+  priority        String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  reminder        Boolean  @default(false)
+  reminderDate    DateTime?
+  matter          Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
+}
+
+model BillableSession {
+  id          String   @id @default(cuid())
+  matterId    String
+  matterName  String
+  startTime   DateTime
+  endTime     DateTime?
+  duration    Int
+  notes       String?
+  attorney    String
+  billingRate Float
+  date        DateTime
+  status      String
+  billable    Boolean  @default(true)
+  matter      Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
+}
+
+model Client {
+  id                 String   @id @default(cuid())
+  name               String
   type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?  @db.Text
-  session_state      String?
+  email              String
+  phone              String
+  location           String
+  responsibleAttorney String
+  status             String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  bills              Bill[]
+}
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Bill {
+  id            String    @id @default(cuid())
+  clientId      String
+  clientName    String
+  matterId      String
+  matterName    String
+  totalCost     Float
+  paidAmount    Float     @default(0)
+  retainerFee   Float
+  retainerDue   DateTime
+  unpaidBalance Float
+  status        String
+  dueDate       DateTime
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  payments      Payment[]
+}
 
-  @@unique([provider, providerAccountId])
-  @@map("accounts")
+model Payment {
+  id           String   @id @default(cuid())
+  billId       String
+  amount       Float
+  paymentDate  DateTime
+  paymentMethod String
+  reference    String?
+  notes        String?
+  bill         Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
 }
 
 model Session {
-  id           String   @id @default(uuid())
+  id           String   @id @default(cuid())
   sessionToken String   @unique
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("sessions")
 }
 
 model VerificationToken {
@@ -69,305 +214,4 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
-  @@map("verification_tokens")
-}
-
-model UserProfile {
-  id            String    @id @default(uuid())
-  userId        String    @unique
-  phoneNumber   String?
-  position      String?
-  department    String?
-  avatar        String?
-  bio           String?
-  settings      Json?     @default("{}")
-  
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_profiles")
-}
-
-model Notification {
-  id          String           @id @default(uuid())
-  userId      String
-  type        NotificationType
-  title       String
-  message     String
-  read        Boolean          @default(false)
-  createdAt   DateTime         @default(now())
-  data        Json?
-  
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("notifications")
-}
-
-// Matter model and related models
-model Matter {
-  id                 String              @id @default(uuid())
-  client             String
-  status             MatterStatus
-  notes              String?
-  originatingAttorney String
-  responsibleAttorney String
-  courtLocation      String
-  practiceArea       String
-  caseNumber         String
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  
-  // Relations
-  deadlines          MatterDeadline[]
-  documents          MatterDocument[]
-  subscribedAttorneys SubscribedAttorney[]
-  billableSessions   BillableSession[]
-  tasks              Task[]
-  assignedUsers      User[]            @relation("AssignedMatters")
-
-  @@map("matters")
-}
-
-model MatterDeadline {
-  id                  String    @id @default(uuid())
-  matterId            String
-  matterOpens         DateTime
-  matterCloses        DateTime
-  matterDue           DateTime
-  statuteOfLimitations DateTime
-  
-  matter              Matter    @relation(fields: [matterId], references: [id], onDelete: Cascade)
-
-  @@map("matter_deadlines")
-}
-
-model SubscribedAttorney {
-  id           String  @id @default(uuid())
-  matterId     String
-  attorneyName String
-  
-  matter       Matter  @relation(fields: [matterId], references: [id], onDelete: Cascade)
-
-  @@map("subscribed_attorneys")
-}
-
-model MatterDocument {
-  id         String   @id @default(uuid())
-  matterId   String
-  name       String
-  url        String
-  type       String
-  uploadedAt DateTime @default(now())
-  
-  matter     Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
-
-  @@map("matter_documents")
-}
-
-// Billable Session model
-model BillableSession {
-  id          String        @id @default(uuid())
-  matterId    String
-  matterName  String
-  startTime   DateTime
-  endTime     DateTime?
-  duration    Int          // in minutes
-  notes       String?
-  attorney    String
-  billingRate Float
-  date        DateTime
-  status      SessionStatus
-  billable    Boolean
-  
-  matter      Matter        @relation(fields: [matterId], references: [id])
-
-  @@map("billable_sessions")
-}
-
-// Task model
-model Task {
-  id              String      @id @default(uuid())
-  name            String
-  matterId        String
-  matterName      String
-  description     String?
-  dueDate         DateTime
-  assignedAttorney String
-  status          TaskStatus
-  priority        TaskPriority
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  reminder        Boolean
-  reminderDate    DateTime?
-  
-  matter          Matter      @relation(fields: [matterId], references: [id])
-  assignedUser    User        @relation("AssignedTasks", fields: [assignedAttorney], references: [id])
-
-  @@map("tasks")
-}
-
-// Client model
-model Client {
-  id                 String      @id @default(uuid())
-  name               String
-  type               ClientType
-  email              String
-  phone              String
-  location           String
-  responsibleAttorney String
-  status             ClientStatus
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
-  
-  bills              Bill[]
-
-  @@map("clients")
-}
-
-// Document model
-model Document {
-  id           String           @id @default(uuid())
-  name         String
-  type         DocumentType
-  status       DocumentStatus
-  matterId     String
-  matterName   String
-  uploadedBy   String
-  uploadedAt   DateTime         @default(now())
-  lastModified DateTime         @updatedAt
-  fileUrl      String
-  fileSize     Int
-  tags         String[]
-  
-  versions     DocumentVersion[]
-  uploader     User             @relation("UploadedDocuments", fields: [uploadedBy], references: [id])
-
-  @@map("documents")
-}
-
-model DocumentVersion {
-  id         String   @id @default(uuid())
-  documentId String
-  version    Int
-  uploadedBy String
-  uploadedAt DateTime @default(now())
-  fileUrl    String
-  fileSize   Int
-  changes    String?
-  
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-
-  @@map("document_versions")
-}
-
-// Bill model
-model Bill {
-  id            String      @id @default(uuid())
-  clientId      String
-  clientName    String
-  matterId      String
-  matterName    String
-  totalCost     Float
-  paidAmount    Float       @default(0)
-  retainerFee   Float
-  retainerDue   DateTime
-  unpaidBalance Float
-  status        BillStatus
-  dueDate       DateTime
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  
-  payments      Payment[]
-  client        Client      @relation(fields: [clientId], references: [id])
-
-  @@map("bills")
-}
-
-model Payment {
-  id            String        @id @default(uuid())
-  billId        String
-  amount        Float
-  paymentDate   DateTime
-  paymentMethod PaymentMethod
-  reference     String
-  notes         String?
-  
-  bill          Bill          @relation(fields: [billId], references: [id], onDelete: Cascade)
-
-  @@map("payments")
-}
-
-// Enums
-enum UserRole {
-  ADMIN
-  ATTORNEY
-  STAFF
-}
-
-enum NotificationType {
-  MATTER_ASSIGNED
-  TASK_DUE
-  DOCUMENT_SHARED
-  DEADLINE_APPROACHING
-  BILL_CREATED
-  PAYMENT_RECEIVED
-}
-
-enum MatterStatus {
-  Open
-  Pending
-  Closed
-}
-
-enum SessionStatus {
-  Ongoing
-  Completed
-  Planned
-  Paused
-}
-
-enum TaskStatus {
-  Pending
-  Completed
-}
-
-enum TaskPriority {
-  Low
-  Medium
-  High
-}
-
-enum ClientType {
-  Individual
-  Company
-}
-
-enum ClientStatus {
-  Active
-  Inactive
-}
-
-enum DocumentType {
-  Agreement
-  Brief
-  Affidavit
-  Appeal
-  Complaint
-  Deed
-}
-
-enum DocumentStatus {
-  Uploaded
-  Drafted
-}
-
-enum BillStatus {
-  Pending
-  Paid
-}
-
-enum PaymentMethod {
-  Cash
-  BankTransfer
-  CreditCard
-  Check
 } 

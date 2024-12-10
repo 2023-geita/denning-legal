@@ -1,5 +1,6 @@
 export interface Matter {
   id: string;
+  name: string;
   client: string;
   status: 'Open' | 'Pending' | 'Closed';
   notes: string;

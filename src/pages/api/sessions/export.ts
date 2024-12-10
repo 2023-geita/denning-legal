@@ -1,126 +1,77 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getDb } from '@/lib/db';
-import { formatDate, formatTime } from '@/utils/format';
+import { prisma } from '@/lib/prisma';
+import { getSession } from 'next-auth/react';
 
-interface SessionTotals {
-  totalHours: number;
-  billableHours: number;
-  billableAmount: number;
-}
-
-interface SessionDocument {
-  date: Date;
-  startTime: Date;
-  endTime?: Date;
-  duration: number;
-  attorney: string;
-  notes?: string;
-  billable: boolean;
-  billingRate: number;
-  matterName: string;
-  clientName: string;
+interface SessionRow {
+  'Session ID': string;
+  'Attorney': string;
+  'Matter': string;
+  'Date': string;
+  'Start Time': string;
+  'End Time': string;
+  'Duration (minutes)': string;
+  'Status': string;
+  'Billable': string;
+  'Notes': string;
 }
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  const session = await getSession({ req });
+  if (!session) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 
   try {
-    const { startDate, endDate, matterId, attorney } = req.query;
-    const db = await getDb();
-    const collection = db.collection('sessions');
+    const { startDate, endDate } = req.query;
 
-    const query: any = {};
-
-    if (startDate && endDate) {
-      query.date = {
-        $gte: new Date(startDate as string),
-        $lte: new Date(endDate as string)
-      };
-    }
-
-    if (matterId) {
-      query.matterId = matterId;
-    }
-
-    if (attorney) {
-      query.attorney = attorney;
-    }
-
-    const sessions = await collection
-      .aggregate([
-        { $match: query },
-        {
-          $lookup: {
-            from: 'matters',
-            localField: 'matterId',
-            foreignField: '_id',
-            as: 'matter'
-          }
+    const sessions = await prisma.billableSession.findMany({
+      where: {
+        date: {
+          gte: startDate ? new Date(startDate as string) : undefined,
+          lte: endDate ? new Date(endDate as string) : undefined,
         },
-        { $unwind: '$matter' },
-        {
-          $project: {
-            date: 1,
-            startTime: 1,
-            endTime: 1,
-            duration: 1,
-            attorney: 1,
-            notes: 1,
-            billable: 1,
-            billingRate: 1,
-            matterName: '$matter.name',
-            clientName: '$matter.client'
-          }
-        },
-        { $sort: { date: 1, startTime: 1 } }
-      ])
-      .toArray() as SessionDocument[];
-
-    // Calculate totals
-    const totals = sessions.reduce((acc: SessionTotals, session: SessionDocument) => ({
-      totalHours: acc.totalHours + (session.duration / 60),
-      billableHours: acc.billableHours + (session.billable ? session.duration / 60 : 0),
-      billableAmount: acc.billableAmount + (session.billable ? (session.duration / 60) * session.billingRate : 0)
-    }), { totalHours: 0, billableHours: 0, billableAmount: 0 });
+      },
+      orderBy: {
+        date: 'desc',
+      },
+    });
 
     // Format data for CSV
-    const csvRows = [
-      // Header row
-      ['Date', 'Matter', 'Client', 'Attorney', 'Start Time', 'End Time', 'Duration (hrs)', 'Billable', 'Rate', 'Amount', 'Notes'].join(','),
-      // Data rows
-      ...sessions.map((session: SessionDocument) => [
-        formatDate(session.date),
-        `"${session.matterName}"`,
-        `"${session.clientName}"`,
-        session.attorney,
-        formatTime(session.startTime),
-        session.endTime ? formatTime(session.endTime) : '',
-        (session.duration / 60).toFixed(2),
-        session.billable ? 'Yes' : 'No',
-        session.billable ? `$${session.billingRate.toFixed(2)}` : '',
-        session.billable ? `$${((session.duration / 60) * session.billingRate).toFixed(2)}` : '',
-        `"${session.notes || ''}"`
-      ].join(',')),
-      // Summary rows
-      '',
-      ['Total Hours:', totals.totalHours.toFixed(2)].join(','),
-      ['Billable Hours:', totals.billableHours.toFixed(2)].join(','),
-      ['Total Billable Amount:', `$${totals.billableAmount.toFixed(2)}`].join(',')
+    const csvData: SessionRow[] = sessions.map((session) => ({
+      'Session ID': session.id,
+      'Attorney': session.attorney,
+      'Matter': session.matterName,
+      'Date': session.date.toLocaleDateString(),
+      'Start Time': session.startTime.toLocaleString(),
+      'End Time': session.endTime?.toLocaleString() || 'N/A',
+      'Duration (minutes)': session.duration.toString(),
+      'Status': session.status,
+      'Billable': session.billable ? 'Yes' : 'No',
+      'Notes': session.notes || '',
+    }));
+
+    // Convert to CSV string
+    const headers = Object.keys(csvData[0]) as (keyof SessionRow)[];
+    const csv = [
+      headers.join(','),
+      ...csvData.map(row => headers.map(header => JSON.stringify(row[header])).join(','))
     ].join('\n');
 
     // Set headers for file download
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename=timesheet-${formatDate(new Date())}.csv`);
-
-    res.status(200).send(csvRows);
+    res.setHeader('Content-Disposition', 'attachment; filename=sessions-export.csv');
+    
+    return res.status(200).send(csv);
   } catch (error) {
     console.error('Failed to export sessions:', error);
-    res.status(500).json({ error: 'Failed to export sessions' });
+    return res.status(500).json({ error: 'Failed to export sessions' });
   }
 } 

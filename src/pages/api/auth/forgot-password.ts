@@ -52,7 +52,7 @@ export default async function handler(
     // Send reset email
     await transport.sendMail({
       from: process.env.SMTP_FROM,
-      to: user.email,
+      to: user.email || '',
       subject: 'Reset your password',
       html: `
         <h1>Reset Your Password</h1>

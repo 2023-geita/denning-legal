@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, UserRole } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -7,6 +8,7 @@ async function main() {
     // Clean up existing data
     console.log('Cleaning up existing data...');
     await prisma.$transaction([
+      prisma.user.deleteMany(),
       prisma.payment.deleteMany(),
       prisma.bill.deleteMany(),
       prisma.documentVersion.deleteMany(),
@@ -20,6 +22,18 @@ async function main() {
       prisma.matter.deleteMany(),
     ]);
 
+    console.log('Creating demo user...');
+    const hashedPassword = await bcrypt.hash('demo123', 10);
+    const demoUser = await prisma.user.create({
+      data: {
+        email: 'demo@denning.com',
+        name: 'Demo User',
+        password: hashedPassword,
+        role: UserRole.ATTORNEY,
+        active: true,
+      }
+    });
+
     console.log('Creating sample data...');
 
     // Create a sample client
@@ -30,7 +44,7 @@ async function main() {
         email: 'john@example.com',
         phone: '+254700000000',
         location: 'Nairobi',
-        responsibleAttorney: 'Jane Smith',
+        responsibleAttorney: demoUser.id, // Use demo user as attorney
         status: 'Active'
       }
     });
@@ -38,11 +52,12 @@ async function main() {
     // Create a sample matter
     const matter = await prisma.matter.create({
       data: {
+        name: 'Civil Case 001',
         client: client.name,
         status: 'Open',
         notes: 'Sample matter notes',
-        originatingAttorney: 'Jane Smith',
-        responsibleAttorney: 'Jane Smith',
+        originatingAttorney: demoUser.id,
+        responsibleAttorney: demoUser.id,
         courtLocation: 'Nairobi Law Courts',
         practiceArea: 'Civil Litigation',
         caseNumber: 'CIVIL-2024-001',
@@ -56,7 +71,12 @@ async function main() {
         },
         subscribedAttorneys: {
           create: {
-            attorneyName: 'Jane Smith'
+            attorneyName: demoUser.name || 'Demo User'
+          }
+        },
+        assignedUsers: {
+          connect: {
+            id: demoUser.id
           }
         }
       }
@@ -69,8 +89,8 @@ async function main() {
         type: 'Agreement',
         status: 'Uploaded',
         matterId: matter.id,
-        matterName: 'Civil Case 001',
-        uploadedBy: 'Jane Smith',
+        matterName: matter.name,
+        uploadedBy: demoUser.id,
         fileUrl: 'https://example.com/sample.pdf',
         fileSize: 1024,
         tags: ['agreement', 'civil']
@@ -83,7 +103,7 @@ async function main() {
         clientId: client.id,
         clientName: client.name,
         matterId: matter.id,
-        matterName: 'Civil Case 001',
+        matterName: matter.name,
         totalCost: 50000,
         retainerFee: 10000,
         retainerDue: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -94,6 +114,9 @@ async function main() {
     });
 
     console.log('Sample data created successfully!');
+    console.log('Demo account credentials:');
+    console.log('Email: demo@denning.com');
+    console.log('Password: demo123');
   } catch (error) {
     console.error('Error seeding database:', error);
     process.exit(1);
