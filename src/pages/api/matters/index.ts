@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const db = client.db(process.env.MONGODB_DB);
     console.log('Database connected successfully');
 
-    const collection: Collection<MatterDocument> = db.collection('matters');
+    const mattersCollection = db.collection<MatterDocument>('matters');
     console.log('Accessing matters collection');
 
     if (req.method === 'POST') {
@@ -58,87 +58,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       try {
-        // Format and validate the data
-        const matterData = {
-          client: String(req.body.client || ''),
-          status: ['Open', 'Pending', 'Closed'].includes(req.body.status) ? req.body.status : 'Open',
-          notes: String(req.body.notes || ''),
-          originatingAttorney: String(req.body.originatingAttorney || ''),
-          responsibleAttorney: String(req.body.responsibleAttorney || ''),
-          courtLocation: String(req.body.courtLocation || ''),
-          practiceArea: String(req.body.practiceArea || ''),
-          caseNumber: String(req.body.caseNumber || ''),
-          createdAt: new Date(),
-          updatedAt: new Date()
-        } as MatterDocument;
-
-        console.log('Formatted matter data:', JSON.stringify(matterData, null, 2));
-
-        console.log('Attempting to insert matter into database...');
-        const result = await collection.insertOne(matterData);
-        console.log('Insert result:', result);
-
-        if (!result.acknowledged) {
-          console.error('Insert not acknowledged by MongoDB');
-          throw new Error('Failed to create matter - insert not acknowledged');
-        }
-
-        const createdMatter = {
-          id: result.insertedId.toString(),
+        const matterData = req.body;
+        const result = await mattersCollection.insertOne({
           ...matterData,
-          createdAt: matterData.createdAt.toISOString(),
-          updatedAt: matterData.updatedAt.toISOString()
-        };
-
-        console.log('Successfully created matter:', JSON.stringify(createdMatter, null, 2));
-        return res.status(201).json({
-          success: true,
-          data: createdMatter
+          createdAt: new Date(),
+          updatedAt: new Date(),
         });
+        res.status(201).json({ message: 'Matter created', id: result.insertedId });
       } catch (dbError) {
         console.error('Database operation error:', dbError);
         throw new Error(`Database operation failed: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`);
       }
-    }
-
-    if (req.method === 'GET') {
+    } else if (req.method === 'GET') {
       console.log('Processing GET request');
-      const matters = await collection.find().sort({ createdAt: -1 }).toArray();
-      
-      const formattedMatters = matters.map(matter => ({
-        id: matter._id.toString(),
-        client: matter.client || '',
-        status: matter.status || 'Open',
-        notes: matter.notes || '',
-        originatingAttorney: matter.originatingAttorney || '',
-        responsibleAttorney: matter.responsibleAttorney || '',
-        courtLocation: matter.courtLocation || '',
-        practiceArea: matter.practiceArea || '',
-        caseNumber: matter.caseNumber || '',
-        createdAt: matter.createdAt.toISOString(),
-        updatedAt: matter.updatedAt.toISOString()
-      }));
-
-      console.log(`Found ${formattedMatters.length} matters`);
-      return res.status(200).json({
-        success: true,
-        data: formattedMatters
-      });
+      const matters = await mattersCollection.find().toArray();
+      res.status(200).json(matters);
+    } else {
+      res.setHeader('Allow', ['GET', 'POST']);
+      res.status(405).end(`Method ${req.method} Not Allowed`);
     }
-
-    console.log('Method not allowed:', req.method);
-    return res.status(405).json({
-      success: false,
-      message: 'Method not allowed'
-    });
   } catch (error) {
     console.error('API Error:', error);
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-    
+
     return res.status(500).json({
       success: false,
       message: 'Internal server error',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
-} 
+}

@@ -86,7 +86,19 @@ export default function NewMatter() {
 
   const handleSubmit = async () => {
     try {
-      // TODO: Implement form submission
+      const response = await fetch('/api/matters', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save matter');
+      }
+
+      // Redirect to matters page after successful save
       router.push('/matters');
     } catch (error) {
       console.error('Error creating matter:', error);
@@ -115,6 +127,22 @@ export default function NewMatter() {
       query: { filter: filterId }
     });
   };
+
+  const [matters, setMatters] = useState<Matter[]>([]);
+
+  useEffect(() => {
+    const fetchMatters = async () => {
+      try {
+        const response = await fetch('/api/matters');
+        const data = await response.json();
+        setMatters(data);
+      } catch (error) {
+        console.error('Error fetching matters:', error);
+      }
+    };
+
+    fetchMatters();
+  }, []);
 
   return (
     <Layout>
@@ -396,7 +424,34 @@ export default function NewMatter() {
             </div>
           </div>
         </div>
+
+        {/* History Table */}
+        {matters.length > 0 && (
+          <Card className="bg-[#1A1A1A] mt-6">
+            <h3 className="text-lg font-medium text-white">Matter History</h3>
+            <table className="w-full mt-4">
+              <thead>
+                <tr>
+                  <th className="text-left text-sm font-medium text-gray-400">Client</th>
+                  <th className="text-left text-sm font-medium text-gray-400">Status</th>
+                  <th className="text-left text-sm font-medium text-gray-400">Case Number</th>
+                  <th className="text-left text-sm font-medium text-gray-400">Created At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {matters.map((matter) => (
+                  <tr key={matter._id}>
+                    <td className="text-sm text-white">{matter.client}</td>
+                    <td className="text-sm text-white">{matter.status}</td>
+                    <td className="text-sm text-white">{matter.caseNumber}</td>
+                    <td className="text-sm text-white">{new Date(matter.createdAt).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        )}
       </div>
     </Layout>
   );
-} 
+}
