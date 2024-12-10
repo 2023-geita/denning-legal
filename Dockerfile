@@ -1,36 +1,47 @@
-# Use Node.js LTS version
-FROM node:18-alpine
+# Stage 1: Build dependencies
+FROM node:18-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Install PostgreSQL client and other dependencies
+# Install PostgreSQL client
 RUN apk add --no-cache postgresql-client dos2unix
 
-# Copy package files
-COPY package*.json ./
+# Copy and install dependencies
+COPY package*.json ./ 
 COPY prisma ./prisma/
 
-# Install dependencies
 RUN npm install
-
-# Copy the start script and ensure proper line endings and permissions
-COPY scripts/start.sh ./start.sh
-RUN dos2unix ./start.sh && \
-    chmod +x ./start.sh
+RUN npx prisma generate
 
 # Copy the rest of the application
 COPY . .
-
-# Generate Prisma Client
-RUN npx prisma generate
 
 # Build the application
 ENV NEXT_TELEMETRY_DISABLED 1
 RUN npm run build
 
-# Expose the port the app runs on
-EXPOSE 3000
 
-# Start the application
-CMD ["./start.sh"] 
+# Stage 2: Production image
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install PostgreSQL client
+RUN apk add --no-cache postgresql-client dos2unix
+
+# Copy only the necessary build artifacts from the builder
+COPY --from=builder /app ./
+
+# Copy start script and ensure permissions
+COPY scripts/start.sh ./start.sh
+RUN dos2unix ./start.sh && \
+    chmod +x ./start.sh
+
+# Expose port and set start command
+EXPOSE 3000
+CMD ["./start.sh"]
+
+
+
