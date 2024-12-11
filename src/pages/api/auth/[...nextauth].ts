@@ -1,3 +1,6 @@
+import connectDB from '@/lib/db';
+import clientPromise from '@/lib/mongodb';
+import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import { NextApiHandler } from 'next';
 import NextAuth, { DefaultSession } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';

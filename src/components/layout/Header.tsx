@@ -22,6 +22,8 @@ export default function Header({ onMenuClick, onChatClick }: HeaderProps) {
   const router = useRouter();
   const { data: session, status } = useSession();
 
+  
+
   const isActive = (path: string) => {
     return router.pathname.startsWith(path);
   };
