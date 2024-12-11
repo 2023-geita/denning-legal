@@ -1,25 +1,18 @@
-import { MongoClient, MongoClientOptions } from 'mongodb';
+import { MongoClient } from 'mongodb';
 
 if (!process.env.MONGODB_URI) {
-  throw new Error('Please add your MongoDB URI to .env');
+  throw new Error('Please add your Mongo URI to .env.local');
 }
 
 const uri = process.env.MONGODB_URI;
-const options: MongoClientOptions = {
-  maxPoolSize: 10,
-  minPoolSize: 5,
-  retryWrites: true,
-  writeConcern: {
-    w: 'majority'
-  }
-};
+const options = {};
 
-let client: MongoClient;
+let client;
 let clientPromise: Promise<MongoClient>;
 
 if (process.env.NODE_ENV === 'development') {
   let globalWithMongo = global as typeof globalThis & {
-    _mongoClientPromise?: Promise<MongoClient>
+    _mongoClientPromise?: Promise<MongoClient>;
   };
 
   if (!globalWithMongo._mongoClientPromise) {
