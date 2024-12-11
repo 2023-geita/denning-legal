@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useSession } from 'next-auth/react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import Logo from '../common/Logo';
 
 interface HeaderProps {
@@ -20,7 +20,7 @@ const navigation = [
 
 export default function Header({ onMenuClick, onChatClick }: HeaderProps) {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   const isActive = (path: string) => {
     return router.pathname.startsWith(path);
@@ -34,6 +34,14 @@ export default function Header({ onMenuClick, onChatClick }: HeaderProps) {
       .join('')
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  const handleAuth = async () => {
+    if (session) {
+      await signOut();
+    } else {
+      await signIn('google');
+    }
   };
 
   return (
@@ -101,25 +109,42 @@ export default function Header({ onMenuClick, onChatClick }: HeaderProps) {
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
           </button>
-          <button className="p-2 text-white hover:text-gray-300 transition-colors rounded-lg hover:bg-[#2D2D2D]">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          
+          {session ? (
+            <>
+              <button className="p-2 text-white hover:text-gray-300 transition-colors rounded-lg hover:bg-[#2D2D2D]">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+              </button>
+              <div 
+                onClick={handleAuth}
+                className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center hover:bg-purple-700 transition-colors cursor-pointer"
+              >
+                <span className="text-white text-sm font-medium">
+                  {getInitials(session?.user?.name)}
+                </span>
+              </div>
+            </>
+          ) : (
+            <button
+              onClick={handleAuth}
+              className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors"
             >
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            </svg>
-          </button>
-          <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center hover:bg-purple-700 transition-colors cursor-pointer">
-            <span className="text-white text-sm font-medium">{getInitials(session?.user?.name)}</span>
-          </div>
+              Sign In
+            </button>
+          )}
         </div>
       </nav>
     </header>

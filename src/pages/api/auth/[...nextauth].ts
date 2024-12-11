@@ -1,8 +1,6 @@
 import { NextApiHandler } from 'next';
 import NextAuth, { DefaultSession } from 'next-auth';
-import { PrismaAdapter } from '@auth/prisma-adapter';
 import GoogleProvider from 'next-auth/providers/google';
-import { prisma } from '@/lib/prisma';
 
 declare module 'next-auth' {
   interface Session extends DefaultSession {
@@ -25,8 +23,15 @@ declare module 'next-auth/jwt' {
   }
 }
 
+if (!process.env.NEXTAUTH_SECRET) {
+  throw new Error('Missing NEXTAUTH_SECRET environment variable');
+}
+
+if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+  throw new Error('Missing Google OAuth credentials');
+}
+
 const authHandler: NextApiHandler = NextAuth({
-  adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -47,8 +52,10 @@ const authHandler: NextApiHandler = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      session.user.id = token.id;
-      session.user.role = token.role;
+      if (session.user) {
+        session.user.id = token.id;
+        session.user.role = token.role;
+      }
       return session;
     }
   },
@@ -57,6 +64,7 @@ const authHandler: NextApiHandler = NextAuth({
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === 'development',
 });
 
 export default authHandler;
