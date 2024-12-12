@@ -20,6 +20,7 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.4",
     "@hookform/resolvers": "^3.3.2",
+    "@langchain/langgraph-sdk": "^0.0.32",
     "@prisma/client": "^5.7.1",
     "@tiptap/extension-heading": "^2.10.3",
     "@tiptap/extension-table": "^2.10.3",
