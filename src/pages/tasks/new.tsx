@@ -1,170 +1,131 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useRouter } from 'next/router';
 import Layout from '@/components/layout/Layout';
-import { Card, Button, Input } from '@/components/common';
-
-interface TodoItem {
-  id: string;
-  text: string;
-  completed: boolean;
-}
+import { Card, Button, Input, Select } from '@/components/common';
+import { FiZap } from 'react-icons/fi';
 
 export default function NewTask() {
   const router = useRouter();
-  const [taskName, setTaskName] = useState('');
-  const [matter, setMatter] = useState('');
-  const [todoList, setTodoList] = useState<TodoItem[]>([]);
-  const [newTodoText, setNewTodoText] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [priority, setPriority] = useState<'high' | 'medium' | 'low'>('medium');
-
-  const addTodoItem = () => {
-    if (!newTodoText.trim()) return;
-    
-    setTodoList([
-      ...todoList,
-      {
-        id: Date.now().toString(),
-        text: newTodoText,
-        completed: false
-      }
-    ]);
-    setNewTodoText('');
-  };
-
-  const toggleTodoItem = (id: string) => {
-    setTodoList(todoList.map(item => 
-      item.id === id ? { ...item, completed: !item.completed } : item
-    ));
-  };
-
-  const removeTodoItem = (id: string) => {
-    setTodoList(todoList.filter(item => item.id !== id));
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addTodoItem();
-    }
-  };
 
   return (
     <Layout>
-      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Main Card */}
-          <Card className="bg-[#1A1A1A] p-6">
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Task Name</label>
-                <Input
-                  value={taskName}
-                  onChange={(e) => setTaskName(e.target.value)}
-                  placeholder="Enter task name"
-                  className="bg-[#2D2D2D] text-white w-full"
-                />
-              </div>
+      <div className="min-h-screen bg-black p-6">
+        {/* Status Pills & New Task Button */}
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex space-x-2">
+            <button className="px-4 py-1.5 bg-[#00A3B4] text-white rounded-full text-sm">
+              All
+            </button>
+            <button className="px-4 py-1.5 bg-[#1E1E1E] text-gray-400 rounded-full text-sm hover:bg-[#2D2D2D]">
+              Pending
+            </button>
+            <button className="px-4 py-1.5 bg-[#1E1E1E] text-gray-400 rounded-full text-sm hover:bg-[#2D2D2D]">
+              Completed
+            </button>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-[#FFD700]">⬧</span>
+            <span className="text-white">New Task</span>
+          </div>
+        </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Matter</label>
-                <Input
-                  value={matter}
-                  onChange={(e) => setMatter(e.target.value)}
-                  placeholder="Enter matter name"
-                  className="bg-[#2D2D2D] text-white w-full"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">To-do List</label>
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      value={newTodoText}
-                      onChange={(e) => setNewTodoText(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder="Add a new to-do item"
-                      className="bg-[#2D2D2D] text-white flex-1"
-                    />
-                    <Button onClick={addTodoItem} variant="secondary">Add</Button>
-                  </div>
-                  <div className="space-y-2 mt-4">
-                    {todoList.map((item) => (
-                      <div key={item.id} className="flex items-center space-x-2 bg-[#2D2D2D] p-2 rounded-lg">
-                        <input
-                          type="checkbox"
-                          checked={item.completed}
-                          onChange={() => toggleTodoItem(item.id)}
-                          className="hidden"
-                        />
-                        <div 
-                          onClick={() => toggleTodoItem(item.id)}
-                          className={`w-4 h-4 rounded border cursor-pointer flex items-center justify-center ${
-                            item.completed ? 'border-[#FFD700] bg-[#FFD700]' : 'border-gray-400'
-                          }`}
-                        >
-                          {item.completed && (
-                            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                              <path d="M9 1L3.5 6.5L1 4" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          )}
-                        </div>
-                        <span className={`flex-1 text-white ${item.completed ? 'line-through text-gray-400' : ''}`}>
-                          {item.text}
-                        </span>
-                        <button
-                          onClick={() => removeTodoItem(item.id)}
-                          className="text-gray-400 hover:text-white"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M18 6L6 18M6 6l12 12"/>
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+        <div className="flex gap-8">
+          {/* Left Sidebar */}
+          <div className="w-[280px] shrink-0 space-y-6">
+            <Card className="bg-[#1E1E1E]">
+              <div className="space-y-4">
+                <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Progress</h3>
+                <div className="space-y-1">
+                  <button className="w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-[#FFD700]">
+                    <FiZap className="w-4 h-4" />
+                    <span>Task Details</span>
+                  </button>
                 </div>
               </div>
+            </Card>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="bg-[#1E1E1E]">
+              <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Recent Tasks</h3>
+            </Card>
+          </div>
+
+          {/* Main Content - Right Side */}
+          <div className="flex-1 max-w-3xl">
+            <Card className="bg-[#1E1E1E]">
+              <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">Due Date</label>
+                  <label className="block text-sm text-gray-400 mb-2">Task Name</label>
                   <Input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    className="bg-[#2D2D2D] text-white w-full"
+                    placeholder="Enter Task Name"
+                    className="bg-[#2D2D2D]"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">Priority</label>
-                  <div className="flex items-center space-x-4">
-                    {(['high', 'medium', 'low'] as const).map((level) => (
-                      <label key={level} className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          checked={priority === level}
-                          onChange={() => setPriority(level)}
-                          className="hidden"
-                        />
-                        <div className={`w-4 h-4 rounded-full border ${
-                          priority === level ? 'border-[#FFD700] bg-[#FFD700]' : 'border-gray-400'
-                        }`} />
-                        <span className="text-white capitalize">{level}</span>
-                      </label>
-                    ))}
-                  </div>
+                  <label className="block text-sm text-gray-400 mb-2">Matter</label>
+                  <Select
+                    options={[]}
+                    placeholder="Select Matter"
+                    className="bg-[#2D2D2D]"
+                  />
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-800">
-                <Button variant="secondary" onClick={() => router.back()}>Cancel</Button>
-                <Button variant="primary">Create Task</Button>
+              <div className="mt-6">
+                <label className="block text-sm text-gray-400 mb-2">To-Do List</label>
+                <textarea
+                  placeholder="What to do"
+                  className="w-full h-32 bg-[#2D2D2D] text-white rounded-lg px-4 py-3 placeholder-gray-500 resize-none focus:outline-none focus:ring-1 focus:ring-[#3D3D3D]"
+                />
               </div>
-            </div>
-          </Card>
+
+              <div className="grid grid-cols-2 gap-6 mt-6">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Task Due</label>
+                  <Input
+                    type="date"
+                    placeholder="Select Date"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Attorney Assigned</label>
+                  <Select
+                    options={[]}
+                    placeholder="Select Attorney"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <label className="block text-sm text-gray-400 mb-2">Task Status</label>
+                <div className="flex items-center space-x-6">
+                  <Select
+                    options={[{ value: 'pending', label: 'Pending' }]}
+                    placeholder="Pending"
+                    className="bg-[#2D2D2D] w-40"
+                  />
+                  <label className="inline-flex items-center space-x-2 text-sm text-gray-400">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox h-4 w-4 text-[#FFD700] bg-[#2D2D2D] border-gray-600 rounded"
+                    />
+                    <span>Remind Me?</span>
+                  </label>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-3 mt-6">
+          <Button variant="danger">
+            EMPTY
+          </Button>
+          <Button variant="secondary">
+            SAVE
+          </Button>
         </div>
       </div>
     </Layout>

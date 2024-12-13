@@ -1,118 +1,81 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '@/components/layout/Layout';
 import { Card, Button, Input, Select } from '@/components/common';
-import type { Matter } from '@/types/matter';
-
-interface FormData {
-  client: string;
-  status: Matter['status'];
-  notes: string;
-  originatingAttorney: string;
-  responsibleAttorney: string;
-  courtLocation: string;
-  practiceArea: string;
-  caseNumber: string;
-  matterOpens: string;
-  matterCloses: string;
-  matterDue: string;
-  statuteOfLimitations: string;
-  subscribedAttorneys: string[];
-}
+import { FiCalendar, FiUsers, FiDollarSign, FiFile, FiZap } from 'react-icons/fi';
 
 export default function NewMatter() {
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState('details');
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [formData, setFormData] = useState<FormData>({
-    client: '',
-    status: 'Open',
-    notes: '',
-    originatingAttorney: '',
-    responsibleAttorney: '',
-    courtLocation: '',
-    practiceArea: '',
-    caseNumber: '',
-    matterOpens: '',
-    matterCloses: '',
-    matterDue: '',
-    statuteOfLimitations: '',
-    subscribedAttorneys: []
-  });
+  const [activeSection, setActiveSection] = useState('matter-details');
+  
+  // Create refs for each section
+  const sectionRefs = {
+    'matter-details': useRef<HTMLDivElement>(null),
+    'deadlines': useRef<HTMLDivElement>(null),
+    'subscribed-attorneys': useRef<HTMLDivElement>(null),
+    'billing-details': useRef<HTMLDivElement>(null),
+    'related-documents': useRef<HTMLDivElement>(null),
+  };
 
-  const sections = [
-    { id: 'details', label: 'Matter Details', icon: '⚡' },
-    { id: 'deadlines', label: 'Deadlines', icon: '📅' },
-    { id: 'attorneys', label: 'Subscribed attorneys', icon: '👥' },
-    { id: 'billing', label: 'Billing details', icon: '💰' },
-    { id: 'documents', label: 'Related documents', icon: '📄' }
-  ];
-
-  const filters = [
-    { id: 'all', label: 'All' },
-    { id: 'open', label: 'Open' },
-    { id: 'pending', label: 'Pending' },
-    { id: 'closed', label: 'Closed' }
-  ];
-
-  // Handle scroll and update active section
   useEffect(() => {
     const handleScroll = () => {
-      const sectionElements = sections.map(section => ({
-        id: section.id,
-        element: document.getElementById(section.id)
-      }));
+      const scrollPosition = window.scrollY;
+      const viewportHeight = window.innerHeight;
+      const threshold = viewportHeight * 0.4; // 40% of viewport height
 
-      const currentSection = sectionElements.find(({ element }) => {
-        if (!element) return false;
-        const rect = element.getBoundingClientRect();
-        return rect.top <= 150 && rect.bottom >= 150;
+      let currentSection = 'matter-details';
+      let minDistance = Infinity;
+
+      // Find the section closest to the viewport center
+      Object.entries(sectionRefs).forEach(([id, ref]) => {
+        const element = ref.current;
+        if (element) {
+          const rect = element.getBoundingClientRect();
+          const distance = Math.abs(rect.top - threshold);
+          
+          if (distance < minDistance) {
+            minDistance = distance;
+            currentSection = id;
+          }
+        }
       });
 
-      if (currentSection) {
-        setActiveSection(currentSection.id);
+      if (currentSection !== activeSection) {
+        setActiveSection(currentSection);
       }
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll(); // Initial check
-
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const handleInputChange = (field: keyof FormData, value: string | string[]) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleSubmit = async () => {
-    try {
-      const response = await fetch('/api/matters', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save matter');
+    // Add scroll event listener with throttling
+    let ticking = false;
+    const scrollListener = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          handleScroll();
+          ticking = false;
+        });
+        ticking = true;
       }
+    };
 
-      // Redirect to matters page after successful save
-      router.push('/matters');
-    } catch (error) {
-      console.error('Error creating matter:', error);
-    }
-  };
+    // Initial check
+    handleScroll();
 
-  const handleSectionChange = (sectionId: string) => {
-    setActiveSection(sectionId);
-    const element = document.getElementById(sectionId);
-    if (element) {
-      const offset = 100; // Offset for header
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - offset;
-      
+    // Add scroll event listener
+    window.addEventListener('scroll', scrollListener, { passive: true });
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('scroll', scrollListener);
+    };
+  }, [activeSection]);
+
+  const scrollToSection = (sectionId: string) => {
+    const section = sectionRefs[sectionId]?.current;
+    if (section) {
+      const headerOffset = 80;
+      const elementPosition = section.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
       window.scrollTo({
         top: offsetPosition,
         behavior: 'smooth'
@@ -120,337 +83,332 @@ export default function NewMatter() {
     }
   };
 
-  const handleFilterClick = (filterId: string) => {
-    setActiveFilter(filterId);
-    router.push({
-      pathname: '/matters',
-      query: { filter: filterId }
-    });
-  };
-
-  const [matters, setMatters] = useState<Matter[]>([]);
-
-  useEffect(() => {
-    const fetchMatters = async () => {
-      try {
-        const response = await fetch('/api/matters');
-        const data = await response.json();
-        setMatters(data);
-      } catch (error) {
-        console.error('Error fetching matters:', error);
-      }
-    };
-
-    fetchMatters();
-  }, []);
-
   return (
     <Layout>
-      <div className="min-h-screen p-6">
-        {/* Header with Save Button */}
-        <div className="sticky top-0 bg-black z-10 pb-4 border-b border-[#2D2D2D]">
-          <div className="flex justify-between items-center">
-            <div className="flex space-x-2">
-              {filters.map(filter => (
-                <button
-                  key={filter.id}
-                  onClick={() => handleFilterClick(filter.id)}
-                  className={`filter-tab ${
-                    activeFilter === filter.id ? 'filter-tab-active' : 'filter-tab-inactive'
-                  }`}
-                >
-                  {filter.label}
-                </button>
-              ))}
-            </div>
-            <Button variant="primary" onClick={handleSubmit}>
-              SAVE
-            </Button>
+      <div className="min-h-screen bg-black p-6">
+        {/* Status Pills & New Matter Button */}
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex space-x-2">
+            <button className="px-4 py-1.5 bg-[#00A3B4] text-white rounded-full text-sm">
+              All
+            </button>
+            <button className="px-4 py-1.5 bg-[#1E1E1E] text-gray-400 rounded-full text-sm hover:bg-[#2D2D2D]">
+              Open
+            </button>
+            <button className="px-4 py-1.5 bg-[#1E1E1E] text-gray-400 rounded-full text-sm hover:bg-[#2D2D2D]">
+              Pending
+            </button>
+            <button className="px-4 py-1.5 bg-[#1E1E1E] text-gray-400 rounded-full text-sm hover:bg-[#2D2D2D]">
+              Closed
+            </button>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-[#FFD700]">⬧</span>
+            <span className="text-white">New Matter</span>
           </div>
         </div>
 
-        <div className="flex gap-6 mt-6">
-          {/* Left Sidebar - Fixed */}
-          <div className="w-64 shrink-0">
-            <Card className="bg-[#1A1A1A] sticky top-[100px]">
+        <div className="text-xl text-white mb-6">Matter Details</div>
+
+        <div className="flex gap-8">
+          {/* Left Sidebar */}
+          <div className="w-[280px] shrink-0 space-y-6 sticky top-6 self-start h-fit">
+            <Card className="bg-[#1E1E1E]">
               <div className="space-y-4">
-                <h3 className="text-sm font-medium text-gray-400 uppercase">Progress</h3>
-                <nav className="space-y-1">
-                  {sections.map((section) => (
-                    <button
-                      key={section.id}
-                      onClick={() => handleSectionChange(section.id)}
-                      className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors ${
-                        activeSection === section.id
-                          ? 'bg-[#2D2D2D] text-[#FFD700]'
-                          : 'hover:bg-[#2D2D2D] text-white'
-                      }`}
-                    >
-                      <span className={activeSection === section.id ? 'text-[#FFD700]' : 'text-gray-400'}>
-                        {section.icon}
-                      </span>
-                      <span>
-                        {section.label}
-                      </span>
-                    </button>
-                  ))}
-                </nav>
+                <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Progress</h3>
+                <div className="space-y-1">
+                  <button 
+                    onClick={() => scrollToSection('matter-details')}
+                    className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors duration-200 ${
+                      activeSection === 'matter-details' ? 'text-[#FFD700] bg-[#2D2D2D]' : 'text-gray-400 hover:bg-[#2D2D2D]'
+                    }`}
+                  >
+                    <FiZap className="w-4 h-4" />
+                    <span>Matter Details</span>
+                  </button>
+                  <button 
+                    onClick={() => scrollToSection('deadlines')}
+                    className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors duration-200 ${
+                      activeSection === 'deadlines' ? 'text-[#FFD700] bg-[#2D2D2D]' : 'text-gray-400 hover:bg-[#2D2D2D]'
+                    }`}
+                  >
+                    <FiCalendar className="w-4 h-4" />
+                    <span>Deadlines</span>
+                  </button>
+                  <button 
+                    onClick={() => scrollToSection('subscribed-attorneys')}
+                    className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors duration-200 ${
+                      activeSection === 'subscribed-attorneys' ? 'text-[#FFD700] bg-[#2D2D2D]' : 'text-gray-400 hover:bg-[#2D2D2D]'
+                    }`}
+                  >
+                    <FiUsers className="w-4 h-4" />
+                    <span>Subscribed attorneys</span>
+                  </button>
+                  <button 
+                    onClick={() => scrollToSection('billing-details')}
+                    className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors duration-200 ${
+                      activeSection === 'billing-details' ? 'text-[#FFD700] bg-[#2D2D2D]' : 'text-gray-400 hover:bg-[#2D2D2D]'
+                    }`}
+                  >
+                    <FiDollarSign className="w-4 h-4" />
+                    <span>Billing details</span>
+                  </button>
+                  <button 
+                    onClick={() => scrollToSection('related-documents')}
+                    className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors duration-200 ${
+                      activeSection === 'related-documents' ? 'text-[#FFD700] bg-[#2D2D2D]' : 'text-gray-400 hover:bg-[#2D2D2D]'
+                    }`}
+                  >
+                    <FiFile className="w-4 h-4" />
+                    <span>Related documents</span>
+                  </button>
+                </div>
               </div>
+            </Card>
+
+            <Card className="bg-[#1E1E1E]">
+              <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Recent Updates</h3>
             </Card>
           </div>
 
-          {/* Main Content */}
-          <div className="max-w-3xl flex-1">
-            <div className="space-y-6">
-              <div id="details" className="scroll-mt-[100px]">
-                <Card className="bg-[#1A1A1A]">
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-6">
-                      <Input
-                        label="Client"
-                        placeholder="Select Client"
-                        value={formData.client}
-                        onChange={(e) => handleInputChange('client', e.target.value)}
-                      />
-                      <Select
-                        label="Matter Status"
-                        options={[
-                          { value: 'Open', label: 'Open' },
-                          { value: 'Pending', label: 'Pending' },
-                          { value: 'Closed', label: 'Closed' }
-                        ]}
-                        value={formData.status}
-                        onChange={(e) => handleInputChange('status', e.target.value as Matter['status'])}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-2">Matter Notes</label>
-                      <textarea
-                        placeholder="Enter Matter description"
-                        className="w-full h-32 bg-[#2D2D2D] border-0 rounded-lg px-4 py-2 text-white placeholder-gray-500 resize-none"
-                        value={formData.notes}
-                        onChange={(e) => handleInputChange('notes', e.target.value)}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                      <Input
-                        label="Originating attorney"
-                        placeholder="Search attorney by name"
-                        value={formData.originatingAttorney}
-                        onChange={(e) => handleInputChange('originatingAttorney', e.target.value)}
-                      />
-                      <Input
-                        label="Responsible attorney"
-                        placeholder="Search attorney by name"
-                        value={formData.responsibleAttorney}
-                        onChange={(e) => handleInputChange('responsibleAttorney', e.target.value)}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                      <Input
-                        label="Court Location"
-                        placeholder="Search court"
-                        value={formData.courtLocation}
-                        onChange={(e) => handleInputChange('courtLocation', e.target.value)}
-                      />
-                      <Input
-                        label="Practice Area"
-                        placeholder="Select Practice Area"
-                        value={formData.practiceArea}
-                        onChange={(e) => handleInputChange('practiceArea', e.target.value)}
-                      />
-                    </div>
-
+          {/* Main Content - Right Side */}
+          <div className="flex-1 max-w-3xl space-y-6">
+            {/* Matter Details Card */}
+            <div ref={sectionRefs['matter-details']}>
+              <Card className="bg-[#1E1E1E]">
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">Client</label>
                     <Input
-                      label="Case Number"
-                      placeholder="As provided by the judiciary"
-                      value={formData.caseNumber}
-                      onChange={(e) => handleInputChange('caseNumber', e.target.value)}
+                      placeholder="Select Client"
+                      className="bg-[#2D2D2D]"
                     />
                   </div>
-                </Card>
-              </div>
-
-              <div id="deadlines" className="scroll-mt-[100px]">
-                <Card className="bg-[#1A1A1A]">
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-6">
-                      <Input
-                        label="Matter opens"
-                        type="date"
-                        value={formData.matterOpens}
-                        onChange={(e) => handleInputChange('matterOpens', e.target.value)}
-                      />
-                      <Input
-                        label="Matter closes"
-                        type="date"
-                        value={formData.matterCloses}
-                        onChange={(e) => handleInputChange('matterCloses', e.target.value)}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                      <Input
-                        label="Matter due"
-                        type="date"
-                        value={formData.matterDue}
-                        onChange={(e) => handleInputChange('matterDue', e.target.value)}
-                      />
-                      <Input
-                        label="Statute of limitations date"
-                        type="date"
-                        value={formData.statuteOfLimitations}
-                        onChange={(e) => handleInputChange('statuteOfLimitations', e.target.value)}
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">Matter Status</label>
+                    <Select
+                      options={[{ value: 'open', label: 'Open' }]}
+                      placeholder="Status of the matter"
+                      className="bg-[#2D2D2D]"
+                    />
                   </div>
-                </Card>
-              </div>
+                </div>
 
-              <div id="attorneys" className="scroll-mt-[100px]">
-                <Card className="bg-[#1A1A1A]">
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-2">Attorney Name</label>
-                      <Input
-                        placeholder="Search attorney by name"
-                        value=""
-                        onChange={() => {}}
-                      />
-                      <div className="mt-4">
-                        {formData.subscribedAttorneys.map((attorney, index) => (
-                          <div
-                            key={index}
-                            className="inline-flex items-center bg-[#2D2D2D] rounded-lg px-3 py-1 mr-2 mb-2"
-                          >
-                            <span className="text-white mr-2">{attorney}</span>
-                            <button
-                              onClick={() => {
-                                const newAttorneys = formData.subscribedAttorneys.filter((_, i) => i !== index);
-                                handleInputChange('subscribedAttorneys', newAttorneys);
-                              }}
-                              className="text-gray-400 hover:text-white"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              </div>
+                <div className="mt-6">
+                  <label className="block text-sm text-gray-400 mb-2">Matter Notes</label>
+                  <textarea
+                    placeholder="Enter Matter description"
+                    className="w-full h-32 bg-[#2D2D2D] text-white rounded-lg px-4 py-3 placeholder-gray-500 resize-none focus:outline-none focus:ring-1 focus:ring-[#3D3D3D]"
+                  />
+                </div>
 
-              <div id="billing" className="scroll-mt-[100px]">
-                <Card className="bg-[#1A1A1A]">
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-6">
-                      <Input
-                        label="Client"
-                        placeholder="Select client to bill"
-                        value=""
-                        onChange={() => {}}
-                      />
-                      <Input
-                        label="Total cost"
-                        type="number"
-                        placeholder="Enter amount"
-                        value=""
-                        onChange={() => {}}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                      <Input
-                        label="Retainer fee"
-                        type="number"
-                        placeholder="Enter amount"
-                        value=""
-                        onChange={() => {}}
-                      />
-                      <Input
-                        label="Retainer due"
-                        type="date"
-                        value=""
-                        onChange={() => {}}
-                      />
-                    </div>
-
+                <div className="grid grid-cols-2 gap-6 mt-6">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">Originating attorney</label>
                     <Input
-                      label="Unpaid Balance"
-                      type="number"
-                      placeholder="Enter amount"
-                      value=""
-                      onChange={() => {}}
+                      placeholder="Search attorney by name"
+                      className="bg-[#2D2D2D]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">Responsible attorney</label>
+                    <Input
+                      placeholder="Search attorney by name"
+                      className="bg-[#2D2D2D]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6 mt-6">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">Court Location</label>
+                    <Input
+                      placeholder="Search court"
+                      className="bg-[#2D2D2D]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">Practice Area</label>
+                    <Input
+                      placeholder="Select Practice Area"
+                      className="bg-[#2D2D2D]"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <label className="block text-sm text-gray-400 mb-2">Case Number</label>
+                  <Input
+                    placeholder="As provided by the judiciary"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+              </Card>
+            </div>
+
+            {/* Deadlines Card */}
+            <div ref={sectionRefs['deadlines']}>
+              <Card className="bg-[#1E1E1E]">
+                <h3 className="text-lg text-white mb-6">Deadlines</h3>
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">Matter opens</label>
+                    <Input
+                      placeholder="Search attorney by name"
+                      className="bg-[#2D2D2D]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">Matter closes</label>
+                    <Input
+                      placeholder="Search attorney by name"
+                      className="bg-[#2D2D2D]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6 mt-6">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">Matter due</label>
+                    <Input
+                      placeholder="Search court"
+                      className="bg-[#2D2D2D]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">Statute of limitations date</label>
+                    <Input
+                      placeholder="Select Practice Area"
+                      className="bg-[#2D2D2D]"
+                    />
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Subscribed Attorneys Card */}
+            <div ref={sectionRefs['subscribed-attorneys']}>
+              <Card className="bg-[#1E1E1E]">
+                <h3 className="text-lg text-white mb-6">Subscribed attorneys</h3>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Attorney Name</label>
+                  <Input
+                    placeholder="Search attorney by name"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+                <div className="mt-4">
+                  <div className="inline-flex items-center space-x-1 bg-[#00A3B4] bg-opacity-20 text-[#00A3B4] px-2 py-1 rounded">
+                    <span className="text-sm">Kevin Gallo</span>
+                    <button className="hover:text-white">×</button>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Billing Details Card */}
+            <div ref={sectionRefs['billing-details']}>
+              <Card className="bg-[#1E1E1E]">
+                <h3 className="text-lg text-white mb-6">Billing Details</h3>
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">Client</label>
+                    <Input
+                      placeholder="Select client to bill"
+                      className="bg-[#2D2D2D]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">Total cost</label>
+                      <Input
+                        value="700,000"
+                        className="bg-[#2D2D2D]"
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">Paid amount</label>
+                      <Input
+                        value="136,000"
+                        className="bg-[#2D2D2D]"
+                        disabled
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">Retainer fee</label>
+                      <Input
+                        value="100,000"
+                        className="bg-[#2D2D2D]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">Retainer due</label>
+                      <Input
+                        value="25/11/2024"
+                        className="bg-[#2D2D2D]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">Unpaid Balance</label>
+                    <Input
+                      value="564,000"
+                      className="bg-[#2D2D2D]"
                       disabled
                     />
+                  </div>
 
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-2">Payment History</label>
-                      <div className="space-y-2 text-sm text-gray-400">
-                        <div>ksh. 200,000 on 28/11/2023</div>
-                        <div>ksh. 200,000 on 28/11/2023</div>
-                        <div>ksh. 200,000 on 28/11/2023</div>
-                        <div>ksh. 200,000 on 28/11/2023</div>
-                      </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">Payment History</label>
+                    <div className="space-y-2 text-sm text-gray-400">
+                      <div>ksh. 200,000 on 18/11/2024</div>
+                      <div>ksh. 200,000 on 18/11/2024</div>
+                      <div>ksh. 200,000 on 18/11/2024</div>
                     </div>
                   </div>
-                </Card>
-              </div>
+                </div>
+              </Card>
+            </div>
 
-              <div id="documents" className="scroll-mt-[100px]">
-                <Card className="bg-[#1A1A1A]">
-                  <div className="space-y-6">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-1">
-                        <Input
-                          placeholder="Paste url"
-                          value=""
-                          onChange={() => {}}
-                        />
-                      </div>
-                      <span className="text-gray-400">or add from Local files</span>
-                      <Button variant="secondary">ADD FILE</Button>
-                    </div>
-                    <div>
-                      <Button variant="primary">Upload</Button>
-                    </div>
+            {/* Related Documents Card */}
+            <div ref={sectionRefs['related-documents']}>
+              <Card className="bg-[#1E1E1E]">
+                <h3 className="text-lg text-white mb-6">Related Documents</h3>
+                <div className="flex items-end gap-4">
+                  <div className="flex-1">
+                    <label className="block text-sm text-gray-400 mb-2">Add doc from online source</label>
+                    <Input
+                      placeholder="Paste url"
+                      className="bg-[#2D2D2D]"
+                    />
                   </div>
-                </Card>
-              </div>
+                  <div className="text-center">
+                    <div className="text-sm text-gray-400 mb-2">or add from Local files</div>
+                    <Button variant="secondary" size="sm">
+                      ADD FILE
+                    </Button>
+                  </div>
+                </div>
+              </Card>
             </div>
           </div>
         </div>
 
-        {/* History Table */}
-        {matters.length > 0 && (
-          <Card className="bg-[#1A1A1A] mt-6">
-            <h3 className="text-lg font-medium text-white">Matter History</h3>
-            <table className="w-full mt-4">
-              <thead>
-                <tr>
-                  <th className="text-left text-sm font-medium text-gray-400">Client</th>
-                  <th className="text-left text-sm font-medium text-gray-400">Status</th>
-                  <th className="text-left text-sm font-medium text-gray-400">Case Number</th>
-                  <th className="text-left text-sm font-medium text-gray-400">Created At</th>
-                </tr>
-              </thead>
-              <tbody>
-                {matters.map((matter) => (
-                  <tr key={matter._id}>
-                    <td className="text-sm text-white">{matter.client}</td>
-                    <td className="text-sm text-white">{matter.status}</td>
-                    <td className="text-sm text-white">{matter.caseNumber}</td>
-                    <td className="text-sm text-white">{new Date(matter.createdAt).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
-        )}
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-3 mt-6">
+          <Button variant="danger">
+            EMPTY
+          </Button>
+          <Button variant="secondary">
+            SAVE
+          </Button>
+        </div>
       </div>
     </Layout>
   );

@@ -1,294 +1,196 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '@/components/layout/Layout';
 import { Card, Button, Input, Select } from '@/components/common';
-import { Matter } from '@/types/matter';
-
-const sections = [
-  { id: 'details', label: 'Matter Details' },
-  { id: 'deadlines', label: 'Deadlines' },
-  { id: 'attorneys', label: 'Subscribed attorneys' },
-  { id: 'billing', label: 'Billing details' },
-  { id: 'documents', label: 'Related documents' }
-];
+import { FiCalendar, FiUsers, FiDollarSign, FiFile, FiZap } from 'react-icons/fi';
 
 export default function MatterDetails() {
   const router = useRouter();
   const { id } = router.query;
-  const [activeSection, setActiveSection] = useState('details');
-  const [isEditing, setIsEditing] = useState(false);
-  const [matterData, setMatterData] = useState<Partial<Matter>>({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    if (id && typeof id === 'string') {
-      const fetchMatterData = async () => {
-        try {
-          setIsLoading(true);
-          console.log('Fetching matter data for ID:', id);
-          const response = await fetch(`/api/matters/${id}`);
-          const data = await response.json();
-          console.log('Fetched matter data:', data);
-          
-          if (!response.ok) {
-            throw new Error(data.error || 'Failed to fetch matter data');
-          }
-          
-          setMatterData(data);
-        } catch (error) {
-          console.error('Error fetching matter:', error);
-          setError(error instanceof Error ? error.message : 'Failed to fetch matter');
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      fetchMatterData();
-    } else {
-      setIsLoading(false);
-    }
-  }, [id]);
-
-  const handleSave = async () => {
-    if (!id || typeof id !== 'string') {
-      setError('Invalid matter ID');
-      return;
-    }
-
-    try {
-      setError('');
-      setIsSaving(true);
-      console.log('Starting save operation...');
-      console.log('Matter ID:', id);
-      console.log('Matter data to save:', matterData);
-
-      const requestBody = {
-        client: matterData.client || '',
-        status: matterData.status || 'Open',
-        notes: matterData.notes || '',
-        originatingAttorney: matterData.originatingAttorney || '',
-        responsibleAttorney: matterData.responsibleAttorney || '',
-        courtLocation: matterData.courtLocation || '',
-        practiceArea: matterData.practiceArea || '',
-        caseNumber: matterData.caseNumber || '',
-      };
-
-      console.log('Request body:', requestBody);
-      console.log('Making PUT request to:', `/api/matters/${id}`);
-
-      const response = await fetch(`/api/matters/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      console.log('Response status:', response.status);
-      const responseText = await response.text();
-      console.log('Raw response:', responseText);
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-        console.log('Parsed response data:', data);
-      } catch (e) {
-        console.error('Failed to parse response as JSON:', e);
-        throw new Error('Invalid response from server');
-      }
-
-      if (!response.ok) {
-        throw new Error(data.error || `Server error: ${response.status}`);
-      }
-
-      // Update local state with server response
-      console.log('Updating local state with:', data);
-      setMatterData(data);
-      setIsEditing(false);
-      alert('Matter updated successfully');
-
-      // Refresh the page data
-      console.log('Refreshing page data...');
-      router.replace(router.asPath);
-    } catch (error) {
-      console.error('Error in handleSave:', error);
-      setError(error instanceof Error ? error.message : 'Failed to update matter');
-      alert('Failed to update matter: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <Layout>
-        <div className="min-h-screen flex items-center justify-center">
-          <p className="text-gray-400">Loading matter details...</p>
-        </div>
-      </Layout>
-    );
-  }
-
-  if (error) {
-    return (
-      <Layout>
-        <div className="min-h-screen flex items-center justify-center">
-          <p className="text-red-500">{error}</p>
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>
-      <div className="min-h-screen">
-        {/* Header with actions */}
-        <div className="flex justify-between items-center mb-6">
+      <div className="min-h-screen bg-black p-6">
+        {/* Status Pills & New Matter Button */}
+        <div className="flex justify-between items-center mb-8">
           <div className="flex space-x-2">
-            <button className="filter-tab filter-tab-active">All</button>
-            <button className="filter-tab filter-tab-inactive">Open</button>
-            <button className="filter-tab filter-tab-inactive">Pending</button>
-            <button className="filter-tab filter-tab-inactive">Closed</button>
+            <button className="px-4 py-1.5 bg-[#00A3B4] text-white rounded-full text-sm">
+              All
+            </button>
+            <button className="px-4 py-1.5 bg-[#1E1E1E] text-gray-400 rounded-full text-sm hover:bg-[#2D2D2D]">
+              Open
+            </button>
+            <button className="px-4 py-1.5 bg-[#1E1E1E] text-gray-400 rounded-full text-sm hover:bg-[#2D2D2D]">
+              Pending
+            </button>
+            <button className="px-4 py-1.5 bg-[#1E1E1E] text-gray-400 rounded-full text-sm hover:bg-[#2D2D2D]">
+              Closed
+            </button>
           </div>
-          <div className="flex space-x-4">
-            {isEditing ? (
-              <>
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="inline-flex items-center px-4 py-2 bg-[#1A4731] text-[#34D399] rounded-lg hover:bg-[#1A4731]/80 transition-colors disabled:opacity-50"
-                >
-                  <span className="text-sm font-medium">
-                    {isSaving ? 'Saving...' : 'Save Changes'}
-                  </span>
-                </button>
-                <button
-                  onClick={() => setIsEditing(false)}
-                  disabled={isSaving}
-                  className="inline-flex items-center px-4 py-2 bg-[#4C0519] text-[#F87171] rounded-lg hover:bg-[#4C0519]/80 transition-colors disabled:opacity-50"
-                >
-                  <span className="text-sm font-medium">Cancel</span>
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="inline-flex items-center px-4 py-2 bg-[#1A1A1A] text-white rounded-lg hover:bg-[#2D2D2D] transition-colors"
-              >
-                <span className="text-[#FFD700] mr-2">✎</span>
-                <span className="text-sm font-medium">Edit Matter</span>
-              </button>
-            )}
-          </div>
+          <button 
+            onClick={() => router.push('/matters/new')}
+            className="inline-flex items-center px-4 py-2 bg-[#1E1E1E] text-white rounded-lg hover:bg-[#2D2D2D] transition-colors"
+          >
+            <span className="text-[#FFD700] mr-2">⬧</span>
+            <span className="text-sm">New Matter</span>
+          </button>
         </div>
 
-        {/* Main content */}
-        <div className="flex gap-6">
+        <div className="flex gap-8">
           {/* Left Sidebar */}
-          <Card className="w-64 shrink-0 bg-[#1A1A1A]">
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium text-gray-400 uppercase">Progress</h3>
-              <nav className="space-y-1">
-                {sections.map((section) => (
-                  <button
-                    key={section.id}
-                    onClick={() => setActiveSection(section.id)}
-                    className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors ${
-                      activeSection === section.id
-                        ? 'text-[#FFD700]'
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    <div className={`w-2 h-2 rounded-full ${
-                      activeSection === section.id ? 'bg-[#FFD700]' : 'bg-gray-400'
-                    }`} />
-                    <span>{section.label}</span>
+          <div className="w-[280px] shrink-0">
+            <Card className="bg-[#1E1E1E]">
+              <div className="space-y-4">
+                <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Progress</h3>
+                <div className="space-y-1">
+                  <button className="w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-[#FFD700]">
+                    <FiZap className="w-4 h-4" />
+                    <span>Matter Details</span>
                   </button>
-                ))}
-              </nav>
-            </div>
-          </Card>
-
-          {/* Main Content */}
-          <div className="flex-1 space-y-6">
-            {/* Matter Details Section */}
-            <Card className="bg-[#1A1A1A]">
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Client"
-                    placeholder="Select Client"
-                    value={matterData?.client || ''}
-                    onChange={(e) => setMatterData({ ...matterData, client: e.target.value })}
-                    disabled={!isEditing}
-                  />
-                  <Select
-                    label="Matter Status"
-                    options={[
-                      { value: 'Open', label: 'Open' },
-                      { value: 'Pending', label: 'Pending' },
-                      { value: 'Closed', label: 'Closed' }
-                    ]}
-                    value={matterData?.status || ''}
-                    onChange={(e) => setMatterData({ ...matterData, status: e.target.value as Matter['status'] })}
-                    disabled={!isEditing}
-                  />
+                  <button className="w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-gray-400 hover:bg-[#2D2D2D]">
+                    <FiCalendar className="w-4 h-4" />
+                    <span>Deadlines</span>
+                  </button>
+                  <button className="w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-gray-400 hover:bg-[#2D2D2D]">
+                    <FiUsers className="w-4 h-4" />
+                    <span>Subscribed attorneys</span>
+                  </button>
+                  <button className="w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-gray-400 hover:bg-[#2D2D2D]">
+                    <FiDollarSign className="w-4 h-4" />
+                    <span>Billing details</span>
+                  </button>
+                  <button className="w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-gray-400 hover:bg-[#2D2D2D]">
+                    <FiFile className="w-4 h-4" />
+                    <span>Related documents</span>
+                  </button>
                 </div>
-
-                <Input
-                  label="Matter Notes"
-                  placeholder="Enter Matter description"
-                  value={matterData?.notes || ''}
-                  onChange={(e) => setMatterData({ ...matterData, notes: e.target.value })}
-                  disabled={!isEditing}
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Originating attorney"
-                    placeholder="Search attorney by name"
-                    value={matterData?.originatingAttorney || ''}
-                    onChange={(e) => setMatterData({ ...matterData, originatingAttorney: e.target.value })}
-                    disabled={!isEditing}
-                  />
-                  <Input
-                    label="Responsible attorney"
-                    placeholder="Search attorney by name"
-                    value={matterData?.responsibleAttorney || ''}
-                    onChange={(e) => setMatterData({ ...matterData, responsibleAttorney: e.target.value })}
-                    disabled={!isEditing}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Court Location"
-                    placeholder="Search court"
-                    value={matterData?.courtLocation || ''}
-                    onChange={(e) => setMatterData({ ...matterData, courtLocation: e.target.value })}
-                    disabled={!isEditing}
-                  />
-                  <Input
-                    label="Practice Area"
-                    placeholder="Select Practice Area"
-                    value={matterData?.practiceArea || ''}
-                    onChange={(e) => setMatterData({ ...matterData, practiceArea: e.target.value })}
-                    disabled={!isEditing}
-                  />
-                </div>
-
-                <Input
-                  label="Case Number"
-                  placeholder="As provided by the judiciary"
-                  value={matterData?.caseNumber || ''}
-                  onChange={(e) => setMatterData({ ...matterData, caseNumber: e.target.value })}
-                  disabled={!isEditing}
-                />
               </div>
             </Card>
           </div>
+
+          {/* Main Content - Right Side */}
+          <div className="flex-1">
+            <Card className="bg-[#1E1E1E]">
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Client</label>
+                  <Input
+                    placeholder="Select Client"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Matter Status</label>
+                  <Select
+                    options={[{ value: 'open', label: 'Open' }]}
+                    placeholder="Open"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <label className="block text-sm text-gray-400 mb-2">Matter Notes</label>
+                <textarea
+                  placeholder="Enter Matter description"
+                  className="w-full h-32 bg-[#2D2D2D] text-white rounded-lg px-4 py-3 placeholder-gray-500 resize-none focus:outline-none focus:ring-1 focus:ring-[#3D3D3D]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-6 mt-6">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Originating attorney</label>
+                  <Input
+                    placeholder="Search attorney by name"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Responsible attorney</label>
+                  <Input
+                    placeholder="Search attorney by name"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6 mt-6">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Court Location</label>
+                  <Input
+                    placeholder="Search court"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Practice Area</label>
+                  <Input
+                    placeholder="Select Practice Area"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <label className="block text-sm text-gray-400 mb-2">Case Number</label>
+                <Input
+                  placeholder="As provided by the judiciary"
+                  className="bg-[#2D2D2D]"
+                />
+              </div>
+            </Card>
+
+            {/* Deadlines Card */}
+            <Card className="bg-[#1E1E1E] mt-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Matter opens</label>
+                  <Input
+                    type="date"
+                    placeholder="mm/dd/yyyy"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Matter closes</label>
+                  <Input
+                    type="date"
+                    placeholder="mm/dd/yyyy"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6 mt-6">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Matter due</label>
+                  <Input
+                    type="date"
+                    placeholder="mm/dd/yyyy"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Statute of limitations date</label>
+                  <Input
+                    type="date"
+                    placeholder="mm/dd/yyyy"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-3 mt-6">
+          <Button variant="danger">
+            EMPTY
+          </Button>
+          <Button variant="secondary">
+            SAVE
+          </Button>
         </div>
       </div>
     </Layout>
