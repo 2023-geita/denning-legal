@@ -1,191 +1,160 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useRouter } from 'next/router';
 import Layout from '@/components/layout/Layout';
-import { Card, Button, Input } from '@/components/common';
+import { Card, Button, Input, Select } from '@/components/common';
+import { FiZap } from 'react-icons/fi';
 
-export default function NewBill() {
+export default function NewBilling() {
   const router = useRouter();
-  const [attorneyName, setAttorneyName] = useState('');
-  const [clientName, setClientName] = useState('');
-  const [selectedMatter, setSelectedMatter] = useState('');
-  const [totalCost, setTotalCost] = useState('');
-  const [paidAmount, setPaidAmount] = useState('');
-  const [retainerFee, setRetainerFee] = useState('');
-  const [retainerDue, setRetainerDue] = useState('');
-  const [unpaidBalance, setUnpaidBalance] = useState('');
-  const [pasteUrl, setPasteUrl] = useState('');
-
-  const handleAttorneyNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAttorneyName(e.target.value);
-  };
-
-  const matterOptions = [
-    { value: '', label: 'Select matter' },
-    { value: '1', label: 'Contract Review' },
-    { value: '2', label: 'Legal Consultation' }
-  ];
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate required fields
-    if (!attorneyName.trim()) {
-      alert('Please enter attorney name');
-      return;
-    }
-    
-    if (!clientName || !selectedMatter || !totalCost || !paidAmount || !retainerDue) {
-      alert('Please fill in all required fields.');
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/billing', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          attorneyName: attorneyName.trim(),
-          clientName,
-          matterId: selectedMatter,
-          totalCost: parseFloat(totalCost),
-          paidAmount: parseFloat(paidAmount),
-          retainerFee: parseFloat(retainerFee),
-          retainerDue,
-          unpaidBalance: parseFloat(unpaidBalance),
-          pasteUrl
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create bill');
-      }
-
-      router.push('/billing');
-    } catch (error) {
-      console.error('Error creating bill:', error);
-      alert('Failed to create bill. Please try again.');
-    }
-  };
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-white mb-8">Create New Bill</h1>
-          
-          <Card className="bg-[#1A1A1A] p-6">
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-6">
-                {/* Attorney Name Input */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">
-                    Attorney Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={attorneyName}
-                    onChange={handleAttorneyNameChange}
-                    placeholder="Enter attorney name"
-                    className="w-full p-2 rounded bg-[#2D2D2D] text-white border border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    required
-                  />
-                </div>
+      <div className="min-h-screen bg-black p-6">
+        {/* Status Pills & New Bill Button */}
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex space-x-2">
+            <button className="px-4 py-1.5 bg-[#00A3B4] text-white rounded-full text-sm">
+              All
+            </button>
+            <button className="px-4 py-1.5 bg-[#1E1E1E] text-gray-400 rounded-full text-sm hover:bg-[#2D2D2D]">
+              Pending
+            </button>
+            <button className="px-4 py-1.5 bg-[#1E1E1E] text-gray-400 rounded-full text-sm hover:bg-[#2D2D2D]">
+              Paid
+            </button>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-[#FFD700]">⬧</span>
+            <span className="text-white">New Bill</span>
+          </div>
+        </div>
 
-                {/* Client Name Input */}
-                <div>
-                  <Input
-                    label="Client Name"
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    placeholder="Enter client name"
-                    required
-                  />
-                </div>
-
-                {/* Matter Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">Matter</label>
-                  <select
-                    value={selectedMatter}
-                    onChange={(e) => setSelectedMatter(e.target.value)}
-                    className="bg-[#2D2D2D] text-white w-full p-2 rounded border border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    required
-                  >
-                    {matterOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Billing Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Input
-                    label="Total Cost"
-                    value={totalCost}
-                    onChange={(e) => setTotalCost(e.target.value)}
-                    placeholder="Enter total cost"
-                    type="number"
-                    required
-                  />
-
-                  <Input
-                    label="Paid Amount"
-                    value={paidAmount}
-                    onChange={(e) => setPaidAmount(e.target.value)}
-                    placeholder="Enter paid amount"
-                    type="number"
-                    required
-                  />
-
-                  <Input
-                    label="Retainer Fee"
-                    value={retainerFee}
-                    onChange={(e) => setRetainerFee(e.target.value)}
-                    placeholder="Enter retainer fee"
-                    type="number"
-                  />
-
-                  <Input
-                    label="Retainer Due"
-                    value={retainerDue}
-                    onChange={(e) => setRetainerDue(e.target.value)}
-                    placeholder="Enter retainer due date"
-                    type="date"
-                    required
-                  />
-
-                  <Input
-                    label="Unpaid Balance"
-                    value={unpaidBalance}
-                    onChange={(e) => setUnpaidBalance(e.target.value)}
-                    placeholder="Enter unpaid balance"
-                    type="number"
-                  />
-
-                  <Input
-                    label="Paste URL"
-                    value={pasteUrl}
-                    onChange={(e) => setPasteUrl(e.target.value)}
-                    placeholder="Enter paste URL"
-                  />
-                </div>
-
-                {/* Submit Button */}
-                <div className="flex justify-end">
-                  <Button
-                    type="submit"
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
-                  >
-                    Create Bill
-                  </Button>
+        <div className="flex gap-8">
+          {/* Left Sidebar */}
+          <div className="w-[280px] shrink-0 space-y-6">
+            <Card className="bg-[#1E1E1E]">
+              <div className="space-y-4">
+                <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Progress</h3>
+                <div className="space-y-1">
+                  <button className="w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-[#FFD700]">
+                    <FiZap className="w-4 h-4" />
+                    <span>Billing Details</span>
+                  </button>
                 </div>
               </div>
-            </form>
-          </Card>
+            </Card>
+
+            <Card className="bg-[#1E1E1E]">
+              <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Recent Invoices</h3>
+            </Card>
+          </div>
+
+          {/* Main Content - Right Side */}
+          <div className="flex-1 max-w-3xl">
+            <Card className="bg-[#1E1E1E]">
+              <h2 className="text-lg font-medium text-white mb-6">Billing Details</h2>
+              
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Client</label>
+                  <Select
+                    options={[]}
+                    placeholder="Select client to bill"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Matter</label>
+                  <Select
+                    options={[]}
+                    placeholder="Select matter"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6 mt-6">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Total cost</label>
+                  <Input
+                    type="text"
+                    placeholder="750,000"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Paid amount</label>
+                  <Input
+                    type="text"
+                    placeholder="186,000"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6 mt-6">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Retainer fee</label>
+                  <Input
+                    type="text"
+                    placeholder="500,000"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Retainer due</label>
+                  <Input
+                    type="date"
+                    placeholder="25/10/2024"
+                    className="bg-[#2D2D2D]"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <label className="block text-sm text-gray-400 mb-2">Unpaid balance</label>
+                <Input
+                  type="text"
+                  placeholder="564,000"
+                  className="bg-[#2D2D2D]"
+                  disabled
+                />
+              </div>
+
+              <div className="mt-6">
+                <label className="block text-sm text-gray-400 mb-2">Payment History</label>
+                <div className="space-y-2 bg-[#2D2D2D] rounded-lg p-4">
+                  {[
+                    { amount: '500,000.00', date: '28/11/2024' },
+                    { amount: '500,000.00', date: '28/10/2024' },
+                    { amount: '500,000.00', date: '28/09/2024' },
+                    { amount: '500,000.00', date: '28/08/2024' },
+                  ].map((payment, index) => (
+                    <div key={index} className="flex justify-between text-sm">
+                      <span className="text-gray-400">Est. {payment.amount}</span>
+                      <span className="text-gray-500">on {payment.date}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-3 mt-6">
+          <Button
+            variant="primary"
+            className="bg-[#FFD700] text-black hover:bg-[#E5C100]"
+          >
+            INVOICE
+          </Button>
+          <Button variant="danger">
+            EMPTY
+          </Button>
+          <Button variant="secondary">
+            SAVE
+          </Button>
         </div>
       </div>
     </Layout>
