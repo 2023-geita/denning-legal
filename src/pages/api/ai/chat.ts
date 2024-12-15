@@ -6,10 +6,6 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const session = await getSession({ req });
-  if (!session) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
 
   if (req.method === 'POST') {
     try {
@@ -20,11 +16,16 @@ export default async function handler(
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
 
+      res.flushHeaders();
+
+
       // Create a new thread if not provided
       const thread = threadId ? { thread_id: threadId } : await AIService.createThread();
       
+      // console.log("***** Begin Streaming ******")
       // Stream the response
       for await (const chunk of AIService.streamResponse(thread.thread_id, message)) {
+        // console.log(chunk)
         res.write(`data: ${JSON.stringify(chunk)}\n\n`);
       }
 
