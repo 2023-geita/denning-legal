@@ -50,14 +50,15 @@ export class AIService {
         assistant.assistant_id,
         {
           input: { messages },
+          streamMode: "messages"
         }
       );
 
       for await (const chunk of streamResponse) {
-        if (chunk.event === "message") {
+        if (chunk.event === "messages/partial") {
           yield {
             id: Date.now().toString(),
-            text: chunk.data.content,
+            text: chunk.data[0].content,
             timestamp: new Date(),
             role: 'assistant'
           } as ChatMessage;
@@ -69,19 +70,19 @@ export class AIService {
     }
   }
 
-  static async sendMessage(message: string): Promise<ChatMessage> {
-    try {
-      const thread = await this.createThread();
-      const response = this.streamResponse(thread.thread_id, message);
+  // static async sendMessage(message: string): Promise<ChatMessage> {
+  //   try {
+  //     const thread = await this.createThread();
+  //     const response = this.streamResponse(thread.thread_id, message);
       
-      const firstResponse = await response.next();
-      if (!firstResponse.value) {
-        throw new Error('No response received from assistant');
-      }
-      return firstResponse.value;
-    } catch (error) {
-      console.error('Error sending message:', error);
-      throw error;
-    }
-  }
+  //     const firstResponse = await response.next();
+  //     if (!firstResponse.value) {
+  //       throw new Error('No response received from assistant');
+  //     }
+  //     return firstResponse.value;
+  //   } catch (error) {
+  //     console.error('Error sending message:', error);
+  //     throw error;
+  //   }
+  // }
 } 
