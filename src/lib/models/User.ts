@@ -1,16 +1,25 @@
-import mongoose from 'mongoose';
+// import mongoose from 'mongoose';
 
-const UserSchema = new mongoose.Schema({
-  name: String,
-  email: String,
-  image: String,
-  emailVerified: Date,
-  chats: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Chat'
-  }]
-}, {
-  timestamps: true
-});
+import { Chat } from "./Chat";
 
-export const User = mongoose.models.User || mongoose.model('User', UserSchema); 
+// import { Chat } from "./Chat";
+
+// const UserSchema = new mongoose.Schema({
+//   name: String,
+//   email: String,
+//   image: String,
+//   chats: [{
+//     chatTitle: String,
+//     threadId: String
+//   }]
+// }, {
+//   timestamps: true
+// });
+
+// export const User = mongoose.models.User || mongoose.model('User', UserSchema); 
+export interface User {
+  name: string;
+  email: string;
+  image: string;
+  chats: Chat[];
+}

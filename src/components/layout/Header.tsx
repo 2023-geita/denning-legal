@@ -1,8 +1,11 @@
-import React from 'react';
+"use client"
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import Logo from '../common/Logo';
+import { Chat } from '@/lib/models/Chat';
+import { Session } from 'next-auth';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -18,10 +21,46 @@ const navigation: { name: string; href: string }[] = [
   // { name: 'DOCS', href: '/docs' }
 ];
 
+
+
 export default function Header({ onMenuClick, onChatClick }: HeaderProps) {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const [chats, setChats] = useState<Chat[]>([])
 
+
+  useEffect(() => {
+    const handleSession = async (session: Session) => {
+
+      const response = await fetch(`/api/user/user?email=${session.user.email}`, { method: 'GET'  });
+      const user = await response.json();
+
+      if (!user) {
+        const response = await fetch('/api/user/user', {
+          method: 'POST',
+          body: JSON.stringify({ 
+            user: session.user.name,
+            email: session.user.email,
+            image: session.user.image,
+            chats: []
+          }),
+        });
+        const savedUser = await response.json();
+        console.log("saved user", savedUser)
+      } else {
+        
+        console.log("existing user", user)
+      }
+
+
+    };
+
+    if (session) {
+      handleSession(session)
+    }
+    
+  }, [session])
+  
   
 
   const isActive = (path: string) => {
