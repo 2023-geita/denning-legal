@@ -1,43 +1,136 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import Logo from '@/components/common/Logo';
+import { useSession } from 'next-auth/react';
+import { v4 as uuidv4 } from 'uuid';
 
 interface Message {
   id: string;
   text: string;
-  isUser: boolean;
+  role: 'user' | 'assistant';
+  timestamp: string;
+  isStreaming?: boolean;
 }
 
 export default function Home() {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
+  const { data: session, status } = useSession();
+  const [isLoading, setIsLoading] = useState(false);
+  const [guestEmail, setGuestEmail] = useState<string>('');
+  const userEmail = session?.user?.email || guestEmail;
+  const [isTyping, setIsTyping] = useState(false);
+  const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  console.log(messages);
+  
+  useEffect(() => {
+    if (!session?.user?.email) {
+      setGuestEmail(`guest-${uuidv4()}@temp.com`);
+    }
+  }, [session, messages]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() || isLoading) return;
 
-    // Add user message
-    const newUserMessage: Message = {
+    setIsLoading(true);
+    setIsTyping(true);
+
+    const userMessage: Message = {
       id: Date.now().toString(),
       text: message,
-      isUser: true,
+      role: 'user',
+      timestamp: new Date().toISOString()
     };
 
-    // Simulate AI response
-    const aiResponse: Message = {
+    const aiMessage: Message = {
       id: (Date.now() + 1).toString(),
-      text: "Hi! How may I assist you today?",
-      isUser: false,
+      text: '',
+      role: 'assistant',
+      timestamp: new Date().toISOString(),
+      isStreaming: true
     };
 
-    setMessages(prev => [...prev, newUserMessage, aiResponse]);
+    setMessages(prev => [...prev, userMessage, aiMessage]);
     setMessage('');
+
+    try {
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: userEmail,
+          message: message,
+          threadId: currentThreadId
+        }),
+      });
+
+      const data = await response.json();
+      if (data.threadId) {
+        setCurrentThreadId(data.threadId);
+      }
+
+      const eventSource = new EventSource(`/api/ai/chat?email=${encodeURIComponent(userEmail)}`);
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.text){
+            setIsLoading(false);
+
+          }
+          
+          setMessages(prev => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage?.role === 'assistant' && lastMessage.isStreaming) {
+              return prev.map((msg, index) => {
+                if (index === prev.length - 1) {
+                  return {
+                    ...msg,
+                    text: data.text,
+                    isStreaming: true
+                  };
+                }
+                return msg;
+              });
+            }
+            return prev;
+          });
+        } catch (error) {
+          console.error('Error parsing stream:', error);
+        }
+      };
+
+      eventSource.onerror = () => {
+        eventSource.close();
+        setIsLoading(false);
+        setIsTyping(false);
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.isStreaming ? { ...msg, isStreaming: false } : msg
+          )
+        );
+      };
+
+    } catch (error) {
+      console.error('Error:', error);
+      setIsLoading(false);
+      setIsTyping(false);
+    }
   };
+
+  const TypingIndicator = () => (
+    <div className="flex space-x-2 px-1">
+      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+    </div>
+  );
 
   return (
     <Layout>
       <div className="flex flex-col h-[calc(100vh-4rem)]">
-        {/* Chat Area */}
         <div className="flex-1 overflow-y-auto px-4">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full max-w-4xl mx-auto">
@@ -47,7 +140,6 @@ export default function Home() {
               <h1 className="text-4xl font-heading font-bold text-white mb-8">
                 How may I assist today?
               </h1>
-              {/* Message Input centered below heading */}
               <div className="w-full max-w-2xl">
                 <form onSubmit={handleSubmit} className="relative">
                   <input
@@ -84,21 +176,24 @@ export default function Home() {
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  {!msg.isUser && (
+                  {msg.role === 'assistant' && (
                     <div className="w-8 h-8 mr-3 flex-shrink-0">
                       <Logo />
                     </div>
                   )}
                   <div
                     className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                      msg.isUser
+                      msg.role === 'user'
                         ? 'bg-[#2D2D2D] text-white ml-auto'
                         : 'bg-[#1A1A1A] text-white'
                     }`}
                   >
-                    <p>{msg.text}</p>
+                    <p className="whitespace-pre-wrap break-words">
+                      {msg.text}
+                      {msg.isStreaming && <TypingIndicator />}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -106,7 +201,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* Message Input for when there are messages */}
         {messages.length > 0 && (
           <div className="p-6 bg-black">
             <form onSubmit={handleSubmit} className="relative max-w-4xl mx-auto">

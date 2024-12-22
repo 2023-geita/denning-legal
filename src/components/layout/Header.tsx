@@ -10,6 +10,14 @@ import { Session } from 'next-auth';
 interface HeaderProps {
   onMenuClick: () => void;
   onChatClick: () => void;
+  isMobile: boolean;
+  user: {
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+    id: string;
+    role?: string;
+  };
 }
 
 const navigation: { name: string; href: string }[] = [
@@ -23,7 +31,7 @@ const navigation: { name: string; href: string }[] = [
 
 
 
-export default function Header({ onMenuClick, onChatClick }: HeaderProps) {
+export default function Header({ onMenuClick, onChatClick, isMobile, user }: HeaderProps) {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [chats, setChats] = useState<Chat[]>([])

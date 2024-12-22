@@ -142,3 +142,12 @@ body {
     @apply flex items-center space-x-3 overflow-x-auto -mx-4 px-4;
   }
 } 
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-bounce {
+  animation: bounce 0.8s infinite;
+}

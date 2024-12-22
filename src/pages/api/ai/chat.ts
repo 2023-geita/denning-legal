@@ -1,5 +1,4 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getSession } from 'next-auth/react';
 import { AIService } from '@/services/ai.service';
 import redisClient from '@/lib/redis';
 
@@ -10,24 +9,19 @@ export default async function handler(
   if (req.method === 'POST') {
     try {
       const { message, email, threadId } = req.body;
-    
+      let currentThreadId = threadId;
 
-      // // Check for existing pending stream for the email
-      // let pendingStream = await redisClient.get(`chat:${email}`);
-      // if (pendingStream) {
-      //   // Delete existing pending stream from Redis 
-      //   await redisClient.del(`chat:${email}`);
-      // }
+      if (!currentThreadId) {
+        const response = await AIService.createThread();
+        currentThreadId = response.thread_id;
+      }
 
       const pendingStream = JSON.stringify({
-        threadId: threadId,
+        threadId: currentThreadId,
         email,
         lastMessage: message,
         createdAt: new Date().toISOString()
       })
-
-      // Create new thread
-      const currentThreadId = threadId ? threadId  : await AIService.createThread();
       
       // Store the new pending stream in Redis
       await redisClient.set(`chat:${email}`, pendingStream);
@@ -50,6 +44,7 @@ export default async function handler(
 
       // Get thread info from Redis
       const threadInfo = await redisClient.get(`chat:${email}`);
+      console.log("threadInfo is here", threadInfo);
       if (!threadInfo) {
         return res.status(404).json({ error: 'No awaiting stream found for this user' });
       }
@@ -66,6 +61,8 @@ export default async function handler(
       for await (const chunk of AIService.streamResponse(threadId, lastMessage)) {
         res.write(`data: ${JSON.stringify(chunk)}\n\n`);
       }
+      // Delete the thread info from Redis after streaming is complete
+      await redisClient.del(`chat:${email}`);
 
       res.end();
     } catch (error) {
