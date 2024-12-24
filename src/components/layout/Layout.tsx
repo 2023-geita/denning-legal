@@ -21,12 +21,10 @@ export default function Layout({ children }: LayoutProps) {
 
   const handleMenuClick = () => {
     setIsSidebarOpen(!isSidebarOpen);
-    setIsAIChatOpen(false); // Close AI chat when menu is clicked
   };
 
   const handleChatClick = () => {
     setIsAIChatOpen(!isAIChatOpen);
-    setIsSidebarOpen(false); // Close menu when chat is clicked
   };
 
   return (
@@ -36,22 +34,29 @@ export default function Layout({ children }: LayoutProps) {
         onChatClick={handleChatClick}
       />
       
-      {/* Navigation Sidebar */}
-      <div className="fixed top-16 left-0 bottom-0 w-72 z-40">
-        <Sidebar isOpen={isSidebarOpen} onClose={handleSidebarClose} />
-      </div>
+      {/* Floating Navigation Sidebar with Overlay */}
+      {isSidebarOpen && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            onClick={handleSidebarClose}
+          />
+          <div className="fixed top-16 left-0 w-72 h-[calc(100vh-4rem)] bg-black border-r border-[#2D2D2D] z-50 shadow-lg">
+            <Sidebar isOpen={true} onClose={handleSidebarClose} />
+          </div>
+        </>
+      )}
 
-      {/* AI Chat Sidebar */}
+      {/* AI Chat Fullscreen */}
       <AIChatSidebar isOpen={isAIChatOpen} onClose={handleAIChatClose} />
       
+      {/* Main Content - With smooth transition */}
       <main 
-        className={`pt-16 transition-all duration-300 ${
-          isSidebarOpen || isAIChatOpen ? 'ml-72' : 'ml-0'
+        className={`pt-16 transition-all duration-300 ease-in-out ${
+          isSidebarOpen ? 'ml-36' : 'ml-0'  // Push content half the sidebar width
         }`}
       >
-        <div className="h-[calc(100vh-4rem)] overflow-y-auto">
-          {children}
-        </div>
+        {children}
       </main>
     </div>
   );

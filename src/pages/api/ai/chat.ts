@@ -1,57 +1,115 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getSession } from 'next-auth/react';
 import { AIService } from '@/services/ai.service';
+import MessageStorage from '@/utils/messageStorage';
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  // Only allow POST method
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
+  }
 
-  if (req.method === 'POST') {
+  try {
+    const { message, threadId } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    // Set headers for streaming
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Transfer-Encoding', 'chunked');
+
+    // Create a new thread if not provided
+    let thread;
     try {
-      const { message, threadId } = req.body;
-      
-      // Set headers for streaming
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
+      thread = threadId ? { thread_id: threadId } : await AIService.createThread();
+    } catch (error) {
+      console.error('Thread creation error:', error);
+      return res.status(500).json({ error: 'Failed to create chat thread' });
+    }
 
-      res.flushHeaders();
+    // Set thread ID in response header for new threads
+    if (!threadId) {
+      res.setHeader('x-thread-id', thread.thread_id);
+    }
 
+    // Store user message
+    await MessageStorage.storeMessage(thread.thread_id, {
+      text: message,
+      role: 'user',
+      timestamp: new Date().toISOString()
+    });
 
-      // Create a new thread if not provided
-      const thread = threadId ? { thread_id: threadId } : await AIService.createThread();
-      
-      // console.log("***** Begin Streaming ******")
+    try {
       // Stream the response
+      let assistantMessage = '';
+      console.log('Starting stream response...');
+
+      // Create a write promise to ensure messages are sent in order
+      const writeChunk = async (chunk: any) => {
+        return new Promise<void>((resolve, reject) => {
+          const ok = res.write(
+            `data: ${JSON.stringify(chunk)}\n\n`,
+            'utf-8',
+            (err) => {
+              if (err) reject(err);
+              else resolve();
+            }
+          );
+          if (ok) resolve();
+        });
+      };
+
       for await (const chunk of AIService.streamResponse(thread.thread_id, message)) {
-        // console.log(chunk)
-        res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+        console.log('Received chunk:', chunk);
+        assistantMessage = chunk.text;
+        await writeChunk(chunk);
       }
 
+      console.log('Stream complete. Final message:', assistantMessage);
+
+      // Store assistant message after streaming is complete
+      if (assistantMessage) {
+        await MessageStorage.storeMessage(thread.thread_id, {
+          text: assistantMessage,
+          role: 'assistant',
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // End the response
       res.end();
     } catch (error) {
-      console.error('AI Chat error:', error);
-      return res.status(500).json({ error: 'Failed to process message' });
-    }
-  }
+      console.error('Streaming error:', error);
+      const errorMessage = {
+        id: Date.now().toString(),
+        text: 'An error occurred while processing your message',
+        timestamp: new Date(),
+        role: 'assistant'
+      };
 
-  if (req.method === 'GET') {
-    try {
-      const { threadId } = req.query;
+      await writeChunk(errorMessage);
       
-      if (!threadId || typeof threadId !== 'string') {
-        return res.status(400).json({ error: 'Thread ID is required' });
-      }
+      // Store error message
+      await MessageStorage.storeMessage(thread.thread_id, {
+        text: errorMessage.text,
+        role: 'assistant',
+        timestamp: new Date().toISOString()
+      });
 
-      const runs = await AIService.listRuns(threadId);
-      return res.status(200).json({ runs });
-    } catch (error) {
-      console.error('Failed to fetch chat history:', error);
-      return res.status(500).json({ error: 'Failed to fetch chat history' });
+      res.end();
     }
+  } catch (error) {
+    console.error('AI Chat error:', error);
+    return res.status(500).json({ 
+      error: 'Failed to process message', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    });
   }
-
-  res.setHeader('Allow', ['GET', 'POST']);
-  res.status(405).end(`Method ${req.method} Not Allowed`);
 } 

@@ -73,9 +73,12 @@ export default function Header({ onMenuClick, onChatClick }: HeaderProps) {
               </svg>
             </button>
           )}
-          <Link href="/" className="flex items-center space-x-3">
+          <button 
+            onClick={onChatClick} 
+            className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
+          >
             <Logo className="w-24 h-8" />
-          </Link>
+          </button>
         </div>
 
         {/* Center Navigation - Only show when logged in */}

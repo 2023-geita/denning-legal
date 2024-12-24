@@ -142,3 +142,39 @@ body {
     @apply flex items-center space-x-3 overflow-x-auto -mx-4 px-4;
   }
 } 
+
+/* Custom Scrollbar Styles */
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #2D2D2D;
+    border-radius: 999px;
+    height: 80px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #3D3D3D;
+  }
+
+  /* Firefox */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #2D2D2D transparent;
+  }
+} 
+
+/* Add this to your existing styles */
+.placeholder-top::placeholder {
+  position: absolute;
+  top: 1rem;
+  left: 12px;
+  line-height: 1;
+  transition: opacity 0.2s;
+}

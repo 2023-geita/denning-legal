@@ -32,7 +32,7 @@ const config: Config = {
         }
       },
       fontFamily: {
-        sans: ['var(--font-inter)'],
+        sans: ['var(--font-outfit)', 'sans-serif'],
         heading: ['var(--font-poppins)']
       },
       borderRadius: {
@@ -49,6 +49,7 @@ const config: Config = {
       maxWidth: {
         '8xl': '88rem',
         '9xl': '96rem',
+        'chat': '800px',
       },
       minHeight: {
         'screen-without-header': 'calc(100vh - 4rem)',

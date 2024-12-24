@@ -55,23 +55,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   );
 
   return (
-    <aside className="fixed top-16 left-0 w-72 h-[calc(100vh-4rem)] bg-black border-r border-[#2D2D2D] z-30 transition-transform duration-300">
-      <div className="h-full flex flex-col p-4">
-        {/* Ask the Jury Button */}
-        <button 
-          className="flex items-center space-x-3 px-4 py-3 bg-[#2D2D2D] rounded-lg text-white hover:bg-[#3D3D3D] transition-colors mb-6"
-        >
-          <span className="text-yellow-400">⚖️</span>
-          <span>Ask the Jury</span>
-        </button>
-
-        {/* Chat History */}
-        <div className="flex-1 overflow-y-auto space-y-6">
-          {renderChatSection('Today', chatHistory.today)}
-          {renderChatSection('Yesterday', chatHistory.yesterday)}
-          {renderChatSection('Past 7 days', chatHistory.past7days)}
-        </div>
-      </div>
-    </aside>
+    <nav className="h-full bg-black overflow-y-auto">
+      {/* Sidebar content */}
+    </nav>
   );
 } 
