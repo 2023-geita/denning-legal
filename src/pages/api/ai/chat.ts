@@ -44,7 +44,7 @@ export default async function handler(
 
       // Get thread info from Redis
       const threadInfo = await redisClient.get(`chat:${email}`);
-      console.log("threadInfo is here", threadInfo);
+
       if (!threadInfo) {
         return res.status(404).json({ error: 'No awaiting stream found for this user' });
       }
